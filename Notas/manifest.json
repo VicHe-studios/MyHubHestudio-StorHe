@@ -2,7 +2,7 @@
   "id": "notas",
   "titulo": "Notas Rápidas",
   "icono": "sticky-note",
-  "main": "index.html"
+  "main": "index.html",
   "autor": "VicHeStudios",
   "descripcion": "Una app para tomar notas"
 }
