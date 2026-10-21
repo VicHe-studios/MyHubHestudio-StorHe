@@ -44,7 +44,17 @@
     display: flex; flex-direction: column; gap: 8px;
   }
   
-  .sidebar-header h2 { margin: 0; font-size: 12px; font-weight: 700; text-align: center; letter-spacing: 0.05em; color: var(--muted); text-transform: uppercase; }
+  /* TÍTULO ALINEADO A LA IZQUIERDA */
+  .sidebar-header h2 { 
+    margin: 0; 
+    font-size: 12px; 
+    font-weight: 700; 
+    text-align: left; /* Antes era center */
+    padding-left: 4px; /* Margen para que no toque el borde */
+    letter-spacing: 0.05em; 
+    color: var(--muted); 
+    text-transform: uppercase; 
+  }
   
   .header-btns {
     display: flex; gap: 4px; justify-content: space-between; align-items: center;
@@ -96,7 +106,7 @@
   }
   
   .editor-header { 
-    padding: 24px 32px 16px; /* Más espacio para respirar */
+    padding: 24px 32px 16px;
     border-bottom: 1px solid var(--line); 
   }
   
@@ -108,7 +118,7 @@
   
   textarea.content-input {
     flex: 1; width: 100%; border: none; background: transparent;
-    padding: 24px 32px; /* Márgenes amplios para escribir cómodo */
+    padding: 24px 32px;
     font-size: 15px; line-height: 1.7;
     color: var(--text); outline: none; resize: none;
     font-family: inherit;
@@ -254,10 +264,8 @@
     const note = notes.find(n => n.id === activeId);
     if (!note) return alert('Selecciona una nota para exportar.');
     
-    // Formatear el texto para el archivo
     const textToExport = `Título: ${note.title || 'Sin título'}\nFecha: ${new Date(note.updatedAt).toLocaleString('es')}\n\n${note.content}`;
     
-    // Crear el archivo y descargarlo
     const blob = new Blob([textToExport], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -280,7 +288,6 @@
     reader.onload = (ev) => {
       const content = ev.target.result;
       
-      // Crear una nueva nota con el contenido del archivo
       const newNote = {
         id: 'note_' + Date.now(),
         title: file.name.replace('.txt', ''),
@@ -296,7 +303,7 @@
     };
     
     reader.readAsText(file);
-    e.target.value = ''; // Limpiar el input para permitir importar el mismo archivo de nuevo
+    e.target.value = ''; 
   };
 
   // Iniciar
