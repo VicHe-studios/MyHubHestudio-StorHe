@@ -11,7 +11,6 @@
     --muted: #64748b;
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
-    --field: #f6f8fb;
     --btn-bg: #ffffff;
     --btn-hover: #f1f5f9;
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -22,7 +21,6 @@
     --muted: #9ea1aa;
     --line: rgba(255, 255, 255, 0.09);
     --card: #222227;
-    --field: #2a2a31;
     --btn-bg: #2f2f36;
     --btn-hover: #3f3f46;
   }
@@ -38,14 +36,14 @@
 
   /* Pantalla */
   .display {
-    flex: 1; padding: 24px; display: flex; flex-direction: column;
+    flex: 1; padding: 20px 24px; display: flex; flex-direction: column;
     align-items: flex-end; justify-content: flex-end;
     background: var(--card); word-break: break-all;
   }
   
   .expression {
     font-size: 16px; color: var(--muted); min-height: 24px;
-    margin-bottom: 8px; font-weight: 500; letter-spacing: 0.5px;
+    margin-bottom: 8px; font-weight: 500;
   }
   
   .current-value {
@@ -56,34 +54,39 @@
   /* Teclado */
   .keypad {
     display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 1px; background: var(--line); /* Usamos el gap como borde */
+    gap: 1px; background: var(--line); /* El gap hace de borde */
     border-top: 1px solid var(--line);
-    height: 60%; max-height: 400px;
+    flex: 1; /* Toma el 50% del espacio */
   }
 
   button {
     border: none; outline: none; font-family: inherit;
-    font-size: 20px; font-weight: 600; cursor: pointer;
+    font-size: 22px; font-weight: 600; cursor: pointer;
     background: var(--btn-bg); color: var(--text);
     transition: background 0.1s, transform 0.1s;
     display: flex; align-items: center; justify-content: center;
+    height: 100%; width: 100%;
   }
   
   button:hover { background: var(--btn-hover); }
   button:active { transform: scale(0.96); background: var(--line); }
 
   /* Estilos específicos de botones */
-  button.op { color: var(--accent); font-size: 22px; }
+  button.op { color: var(--accent); font-size: 24px; }
   button.clear { color: #ef4444; }
+  
+  /* El botón igual ahora ocupa 1 columna normal */
   button.equals {
     background: var(--accent); color: #fff;
-    grid-column: span 2;
   }
   button.equals:hover { filter: brightness(1.1); background: var(--accent); }
   button.equals:active { filter: brightness(0.9); background: var(--accent); }
   
+  /* El botón cero ocupa 2 columnas */
+  button.zero { grid-column: span 2; }
+
   /* Botones con iconos (SVG) */
-  button svg { width: 22px; height: 22px; }
+  button svg { width: 24px; height: 24px; }
 </style>
 </head>
 <body>
@@ -116,7 +119,7 @@
     <button data-action="number" data-val="3">3</button>
     <button data-action="operator" data-val="+" class="op">+</button>
 
-    <button data-action="number" data-val="0" style="grid-column: span 2;">0</button>
+    <button class="zero" data-action="number" data-val="0">0</button>
     <button data-action="decimal">.</button>
     <button data-action="equals" class="equals">=</button>
   </div>
@@ -142,19 +145,14 @@
   const currentEl = document.getElementById('current');
 
   const updateDisplay = () => {
-    // Formatear el número principal
-    let displayVal = currentValue;
-    
-    // Si es un número válido, darle formato con separadores de miles (opcional, aquí lo mantenemos simple)
-    if (currentValue.length > 12 && !isNaN(currentValue)) {
+    if (currentValue.length > 10 && !isNaN(currentValue)) {
       currentEl.style.fontSize = '32px';
     } else {
       currentEl.style.fontSize = '48px';
     }
     
-    currentEl.textContent = displayVal;
+    currentEl.textContent = currentValue;
 
-    // Actualizar la expresión superior
     if (currentOperator && previousValue) {
       const opSymbol = { '+': '+', '-': '−', '*': '×', '/': '÷' }[currentOperator];
       expressionEl.textContent = `${previousValue} ${opSymbol}`;
@@ -187,7 +185,6 @@
     const inputValue = parseFloat(currentValue);
 
     if (currentOperator && waitingForOperand) {
-      // Si el usuario cambia de operador antes de poner el segundo número
       currentOperator = nextOperator;
       updateDisplay();
       return;
@@ -216,16 +213,13 @@
         if (curr === 0) return 'Error';
         res = prev / curr; break;
     }
-    // Redondear a 10 decimales para evitar errores de punto flotante (ej: 0.1 + 0.2)
     return Math.round(res * 10000000000) / 10000000000;
   };
 
   const handleEquals = () => {
     if (!currentOperator || previousValue === '') return;
-    
     const inputValue = parseFloat(currentValue);
     const result = calculate(parseFloat(previousValue), inputValue, currentOperator);
-    
     currentValue = String(result);
     previousValue = '';
     currentOperator = null;
@@ -258,7 +252,6 @@
     updateDisplay();
   };
 
-  // Eventos de clic en botones
   document.querySelector('.keypad').addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -275,12 +268,10 @@
     if (action === 'percent') handlePercent();
   });
 
-  // Soporte para teclado físico
   window.addEventListener('keydown', (e) => {
     if (e.key >= '0' && e.key <= '9') inputDigit(e.key);
     if (e.key === '.') inputDecimal();
     if (e.key === '+' || e.key === '-' || e.key === '*' || e.key === '/') {
-      // Prevenir el scroll o buscar en la página
       e.preventDefault(); 
       handleOperator(e.key);
     }
