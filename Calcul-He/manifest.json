@@ -1,0 +1,8 @@
+{
+  "id": "calcul-he",
+  "titulo": "Calcul-He",
+  "icono": "calculator",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Calculadora estándar rápida y precisa"
+}
