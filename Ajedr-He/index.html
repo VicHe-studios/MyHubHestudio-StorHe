@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Librería para la lógica del ajedrez -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
   :root {
@@ -14,7 +13,6 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
-    /* Colores del tablero */
     --board-light: #f0d9b5;
     --board-dark: #b58863;
     --board-highlight: rgba(37, 99, 235, 0.4);
@@ -41,7 +39,7 @@
   .header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 12px 16px; border-bottom: 1px solid var(--line);
-    background: var(--card);
+    background: var(--card); flex-shrink: 0;
   }
   .turn-indicator {
     font-size: 14px; font-weight: 700; color: var(--accent);
@@ -55,14 +53,19 @@
   }
   .btn-reset:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+  /* Contenedor que se adapta al espacio disponible */
   .board-container {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    padding: 16px; background: var(--field); overflow: auto;
+    padding: 10px; background: var(--field); overflow: hidden;
   }
   
+  /* El tablero se mantiene cuadrado y se achica si es necesario */
   .board {
     display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
-    width: min(100%, 400px); aspect-ratio: 1;
+    width: 100%; 
+    max-width: min(100%, calc(100vh - 120px)); /* Evita scroll vertical */
+    max-height: 100%;
+    aspect-ratio: 1;
     border: 2px solid var(--line); border-radius: 8px; overflow: hidden;
     box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     user-select: none;
@@ -70,14 +73,15 @@
   
   .square {
     display: flex; align-items: center; justify-content: center;
-    font-size: 40px; cursor: pointer; position: relative;
+    font-size: clamp(24px, 6vh, 48px); /* Tamaño de pieza dinámico */
+    cursor: pointer; position: relative;
     transition: background 0.1s;
   }
   .square.light { background: var(--board-light); }
   .square.dark { background: var(--board-dark); }
   .square.selected { background: var(--board-highlight) !important; }
   .square.valid-move::after {
-    content: ''; position: absolute; width: 12px; height: 12px;
+    content: ''; position: absolute; width: 25%; height: 25%;
     background: rgba(0,0,0,0.2); border-radius: 50%;
   }
   .square.piece-white { color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
@@ -85,7 +89,7 @@
   
   .app-credit {
     text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
-    border-top: 1px solid var(--line); background: var(--card);
+    border-top: 1px solid var(--line); background: var(--card); flex-shrink: 0;
   }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
 </style>
@@ -106,7 +110,6 @@
   </div>
 
 <script>
-  // Sincronización de Tema con MyHub
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -117,7 +120,6 @@
     }
   });
 
-  // Inicializar ajedrez
   let game = new Chess();
   let selectedSquare = null;
   
@@ -131,7 +133,7 @@
 
   const renderBoard = () => {
     boardEl.innerHTML = '';
-    const boardState = game.board(); // Matriz 8x8
+    const boardState = game.board();
 
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
@@ -151,16 +153,11 @@
           squareEl.classList.add(piece.color === 'w' ? 'piece-white' : 'piece-black');
         }
 
-        if (selectedSquare === squareId) {
-          squareEl.classList.add('selected');
-        }
+        if (selectedSquare === squareId) squareEl.classList.add('selected');
 
-        // Resaltar movimientos válidos si hay una pieza seleccionada
         if (selectedSquare) {
           const moves = game.moves({ square: selectedSquare, verbose: true });
-          if (moves.some(m => m.to === squareId)) {
-            squareEl.classList.add('valid-move');
-          }
+          if (moves.some(m => m.to === squareId)) squareEl.classList.add('valid-move');
         }
 
         squareEl.onclick = () => handleSquareClick(squareId);
@@ -168,7 +165,6 @@
       }
     }
 
-    // Actualizar indicador de turno
     if (game.game_over()) {
       turnIndicator.innerHTML = `<span>🏁</span> ¡Juego Terminado!`;
     } else {
@@ -178,26 +174,15 @@
   };
 
   const handleSquareClick = (square) => {
-    // Si ya hay una pieza seleccionada y hacemos clic en otra casilla
     if (selectedSquare) {
-      const move = game.move({
-        from: selectedSquare,
-        to: square,
-        promotion: 'q' // Siempre promocionar a Reina para simplificar
-      });
-
-      selectedSquare = null; // Deseleccionar
-
+      const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
+      selectedSquare = null;
       if (move === null) {
-        // Movimiento inválido, pero el usuario hizo clic en otra pieza
         const piece = game.get(square);
-        if (piece && piece.color === game.turn()) {
-          selectedSquare = square; // Seleccionar la nueva pieza
-        }
+        if (piece && piece.color === game.turn()) selectedSquare = square;
       }
       renderBoard();
     } else {
-      // Si no hay nada seleccionado, verificar si hay una pieza ahí
       const piece = game.get(square);
       if (piece && piece.color === game.turn()) {
         selectedSquare = square;
