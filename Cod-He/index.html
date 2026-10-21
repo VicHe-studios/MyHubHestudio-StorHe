@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
 <style>
   :root {
     --accent: #2563eb;
@@ -36,11 +35,10 @@
     overflow: hidden;
   }
 
-  /* Barra Superior */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 16px; border-bottom: 1px solid var(--line);
-    background: var(--card); flex-shrink: 0;
+    background: var(--card); flex-shrink: 0; z-index: 10;
   }
   .topbar-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
   .topbar-title svg { color: var(--accent); width: 18px; height: 18px; }
@@ -53,16 +51,11 @@
   .btn-export:hover { filter: brightness(1.1); }
   .btn-export svg { width: 14px; height: 14px; }
 
-  /* Layout Principal */
-  .main-layout {
-    display: flex; flex: 1; overflow: hidden; min-height: 0;
-  }
+  .main-layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
-  /* Sidebar */
   .sidebar {
     width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--line);
-    display: flex; flex-direction: column; flex-shrink: 0;
-    color: var(--text);
+    display: flex; flex-direction: column; flex-shrink: 0; color: var(--text);
   }
   
   .sidebar-header {
@@ -77,10 +70,7 @@
   .btn-icon:hover { background: var(--line); color: var(--text); }
   .btn-icon svg { width: 14px; height: 14px; }
 
-  .file-tree {
-    flex: 1; overflow-y: auto; padding: 4px 0;
-    font-size: 13px;
-  }
+  .file-tree { flex: 1; overflow-y: auto; padding: 4px 0; font-size: 13px; }
 
   .tree-item {
     display: flex; align-items: center; gap: 6px; padding: 4px 12px;
@@ -96,27 +86,20 @@
   .tree-item .actions button:hover { color: var(--text); background: rgba(0,0,0,0.1); }
   .tree-item .actions svg { width: 12px; height: 12px; }
 
-  /* Editor Area */
   .editor-area {
     flex: 1; display: flex; flex-direction: column; background: var(--editor-bg);
     position: relative; min-width: 0;
   }
   
-  #editor-container {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-  }
+  #editor-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
 
-  /* Status Bar */
   .statusbar {
     height: 24px; background: var(--accent); color: #fff;
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0 12px; font-size: 11px; font-weight: 500;
-    flex-shrink: 0;
+    padding: 0 12px; font-size: 11px; font-weight: 500; flex-shrink: 0;
   }
   .status-left, .status-right { display: flex; gap: 16px; }
 
-  /* Empty State */
   .empty-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; color: #666;
@@ -126,13 +109,13 @@
 
   /* Modal */
   .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    display: none; align-items: center; justify-content: center; z-index: 100;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 9999;
   }
   .modal-overlay.active { display: flex; }
   .modal {
     background: var(--card); width: 90%; max-width: 300px; padding: 20px;
-    border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     display: flex; flex-direction: column; gap: 12px; color: var(--text);
   }
   .modal h3 { margin: 0; font-size: 16px; }
@@ -221,6 +204,7 @@
     }
   });
 
+  // 1. Inicializar Ace
   const editor = ace.edit("editor-container");
   editor.setTheme("ace/theme/tomorrow_night");
   editor.session.setMode("ace/mode/text");
@@ -231,8 +215,10 @@
     enableBasicAutocompletion: true,
     enableLiveAutocompletion: true
   });
+  
+  // Bloquear el editor hasta que se seleccione un archivo
+  editor.setReadOnly(true); 
 
-  // Ajustar el editor cuando cambie el tamaño de la ventana
   window.addEventListener('resize', () => editor.resize());
 
   editor.session.selection.on('changeCursor', () => {
@@ -240,16 +226,22 @@
     document.getElementById('status-pos').textContent = `Ln ${pos.row + 1}, Col ${pos.column + 1}`;
   });
 
-  let files = JSON.parse(localStorage.getItem('codhe_files')) || [];
+  // 2. Lógica del Sistema de Archivos
+  let files = [];
   let activeFileId = null;
 
-  if (files.length === 0) {
+  try {
+    const stored = localStorage.getItem('codhe_files_v2');
+    if (stored) files = JSON.parse(stored);
+  } catch(e) { files = []; }
+
+  // Si no hay archivos o la estructura está corrupta, crear por defecto
+  if (!Array.isArray(files) || files.length === 0 || !files.find(f => f.id === 'root')) {
     files = [
       { id: 'root', parent: null, name: 'Mi Proyecto', type: 'folder' },
       { id: 'f1', parent: 'root', name: 'index.html', type: 'file', content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Hola</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>' },
       { id: 'f2', parent: 'root', name: 'style.css', type: 'file', content: 'body {\n  background: #222;\n  color: #fff;\n}' }
     ];
-    saveToStorage();
   }
 
   const fileTreeEl = document.getElementById('file-tree');
@@ -257,9 +249,10 @@
   const statusFile = document.getElementById('status-file');
   const statusLang = document.getElementById('status-lang');
 
-  const saveToStorage = () => localStorage.setItem('codhe_files', JSON.stringify(files));
+  const saveToStorage = () => localStorage.setItem('codhe_files_v2', JSON.stringify(files));
 
   const getLanguage = (filename) => {
+    if (!filename) return 'text';
     if (filename.endsWith('.html')) return 'html';
     if (filename.endsWith('.css')) return 'css';
     if (filename.endsWith('.js')) return 'javascript';
@@ -320,9 +313,10 @@
     renderTree();
     
     emptyState.style.display = 'none';
+    editor.setReadOnly(false); // Desbloquear
     editor.setValue(file.content || '', -1);
     editor.session.setMode(`ace/mode/${getLanguage(file.name)}`);
-    editor.resize(); // Importante para que Ace se dibuje bien
+    editor.resize(); 
     editor.focus();
     
     statusFile.textContent = file.name;
@@ -340,7 +334,7 @@
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // Modal Custom
+  // 3. Modal Custom
   const modal = document.getElementById('modal');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
@@ -365,13 +359,15 @@
     if (e.key === 'Enter') document.getElementById('btn-save').click();
   };
 
-  // Nuevos elementos
+  // 4. Botones de creación
   document.getElementById('btn-new-file').onclick = () => {
-    showPrompt('Nuevo Archivo', 'nuevo.txt', (name) => {
+    showPrompt('Nuevo Archivo', 'archivo.txt', (name) => {
       if (!name) return;
-      files.push({ id: generateId(), parent: 'root', name, type: 'file', content: '' });
+      const newId = generateId();
+      files.push({ id: newId, parent: 'root', name, type: 'file', content: '' });
       saveToStorage();
       renderTree();
+      openFile(newId); // Abrir automáticamente
     });
   };
 
@@ -417,6 +413,7 @@
     if (activeFileId === id) {
       activeFileId = null;
       editor.setValue('');
+      editor.setReadOnly(true); // Volver a bloquear
       emptyState.style.display = 'flex';
       statusFile.textContent = 'Sin archivo';
       statusLang.textContent = 'Texto plano';
