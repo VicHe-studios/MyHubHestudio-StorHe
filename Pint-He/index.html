@@ -12,6 +12,7 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
+    --canvas-bg: #ffffff; /* Fondo del lienzo en modo claro */
   }
   
   html[data-modo="oscuro"] {
@@ -20,6 +21,7 @@
     --line: rgba(255, 255, 255, 0.09);
     --card: #222227;
     --field: #2a2a31;
+    --canvas-bg: #1a1a1f; /* Fondo del lienzo en modo oscuro */
   }
 
   * { box-sizing: border-box; }
@@ -30,16 +32,13 @@
     overflow: hidden;
   }
 
-  /* Barra de herramientas */
   .toolbar {
     display: flex; align-items: center; gap: 12px;
     padding: 10px 16px; border-bottom: 1px solid var(--line);
-    background: var(--card); flex-wrap: wrap;
+    background: var(--card); flex-wrap: wrap; flex-shrink: 0;
   }
   
-  .tool-group {
-    display: flex; align-items: center; gap: 6px;
-  }
+  .tool-group { display: flex; align-items: center; gap: 6px; }
 
   input[type="color"] {
     width: 32px; height: 32px; padding: 0; border: none;
@@ -48,9 +47,7 @@
   input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
   input[type="color"]::-webkit-color-swatch { border: 2px solid var(--line); border-radius: 8px; }
 
-  input[type="range"] {
-    width: 80px; accent-color: var(--accent);
-  }
+  input[type="range"] { width: 80px; accent-color: var(--accent); }
 
   .btn-tool {
     background: var(--field); border: 1px solid var(--line); color: var(--text);
@@ -60,29 +57,28 @@
   }
   .btn-tool:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
   .btn-tool.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-tool:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-tool svg { width: 16px; height: 16px; }
 
-  .btn-text {
-    width: auto; padding: 0 12px; font-weight: 600; font-size: 12px; gap: 6px;
-  }
+  .btn-text { width: auto; padding: 0 12px; font-weight: 600; font-size: 12px; gap: 6px; }
 
-  /* Área de dibujo */
   .canvas-container {
     flex: 1; display: flex; align-items: center; justify-content: center;
     background: var(--field); padding: 16px; overflow: hidden;
   }
   
   canvas {
-    background: #ffffff; /* Lienzo blanco por defecto */
+    background: var(--canvas-bg); /* Color adaptado al tema */
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     cursor: crosshair;
     touch-action: none;
+    border: 1px solid var(--line);
   }
 
   .app-credit {
     text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
-    background: var(--card); border-top: 1px solid var(--line);
+    background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0;
   }
 </style>
 </head>
@@ -95,6 +91,15 @@
       </button>
       <button class="btn-tool" id="tool-eraser" title="Borrador">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16a2 2 0 0 1 0-2.828l9.172-9.172a2 2 0 0 1 2.828 0l4.242 4.242a2 2 0 0 1 0 2.828L11 20"></path><line x1="18" y1="13" x2="11" y2="20"></line></svg>
+      </button>
+    </div>
+
+    <div class="tool-group">
+      <button class="btn-tool" id="btn-undo" title="Deshacer" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
+      </button>
+      <button class="btn-tool" id="btn-redo" title="Rehacer" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
       </button>
     </div>
 
@@ -124,7 +129,6 @@
   </div>
 
 <script>
-  // Sincronización de Tema con MyHub
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -139,36 +143,60 @@
   const container = document.getElementById('canvas-container');
   
   let isDrawing = false;
-  let currentTool = 'pencil'; // 'pencil' o 'eraser'
+  let currentTool = 'pencil';
   let currentColor = '#2563eb';
   let currentSize = 4;
 
-  // Ajustar tamaño del canvas al contenedor
+  // Sistema Undo / Redo
+  let history = [];
+  let historyIndex = -1;
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+
+  const saveState = () => {
+    // Si hicimos undo y luego dibujamos, borramos el futuro del historial
+    if (historyIndex < history.length - 1) {
+      history = history.slice(0, historyIndex + 1);
+    }
+    // Guardar el estado actual (ImageData es eficiente para canvas)
+    history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    historyIndex++;
+    updateButtons();
+  };
+
+  const updateButtons = () => {
+    btnUndo.disabled = historyIndex <= 0;
+    btnRedo.disabled = historyIndex >= history.length - 1;
+  };
+
   const resizeCanvas = () => {
-    // Guardar dibujo actual temporalmente
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
-    tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    if (canvas.width > 0 && canvas.height > 0) {
+      tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    }
 
-    // Redimensionar canvas al tamaño del contenedor
     const rect = container.getBoundingClientRect();
-    canvas.width = rect.width - 32; // -32 por el padding
+    canvas.width = rect.width - 32;
     canvas.height = rect.height - 32;
 
-    // Restaurar dibujo
-    ctx.drawImage(tempCanvas, 0, 0);
+    if (tempCanvas.width > 0) {
+      ctx.drawImage(tempCanvas, 0, 0);
+    }
     
-    // Configurar estilo de dibujo
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
+    
+    // Al redimensionar, reiniciamos el historial para evitar bugs
+    history = [];
+    historyIndex = -1;
+    saveState();
   };
 
-  // Inicializar tamaño
   window.addEventListener('resize', resizeCanvas);
   setTimeout(resizeCanvas, 100);
 
-  // Funciones de dibujo
   const startDrawing = (e) => {
     isDrawing = true;
     draw(e);
@@ -189,7 +217,15 @@
     }
 
     ctx.lineWidth = currentSize;
-    ctx.strokeStyle = currentTool === 'eraser' ? '#ffffff' : currentColor;
+    
+    // Lógica del borrador: destination-out borra el canvas mostrando el fondo real
+    if (currentTool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = currentColor;
+    }
 
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -198,31 +234,27 @@
   };
 
   const stopDrawing = () => {
+    if (!isDrawing) return;
     isDrawing = false;
     ctx.beginPath();
+    saveState(); // Guardar en el historial al soltar el ratón
   };
 
-  // Eventos de ratón y táctiles
   canvas.addEventListener('mousedown', startDrawing);
   canvas.addEventListener('mousemove', draw);
   canvas.addEventListener('mouseup', stopDrawing);
   canvas.addEventListener('mouseout', stopDrawing);
-  
   canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); });
   canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
   canvas.addEventListener('touchend', stopDrawing);
 
-  // Controles de la barra de herramientas
+  // Controles
   document.getElementById('color-picker').oninput = (e) => {
     currentColor = e.target.value;
-    if (currentTool === 'eraser') {
-      document.getElementById('tool-pencil').click(); // Cambiar a pincel automáticamente
-    }
+    document.getElementById('tool-pencil').click();
   };
 
-  document.getElementById('size-picker').oninput = (e) => {
-    currentSize = e.target.value;
-  };
+  document.getElementById('size-picker').oninput = (e) => { currentSize = e.target.value; };
 
   document.getElementById('tool-pencil').onclick = (e) => {
     currentTool = 'pencil';
@@ -236,16 +268,47 @@
     document.getElementById('tool-pencil').classList.remove('active');
   };
 
+  btnUndo.onclick = () => {
+    if (historyIndex > 0) {
+      historyIndex--;
+      ctx.putImageData(history[historyIndex], 0, 0);
+      updateButtons();
+    }
+  };
+
+  btnRedo.onclick = () => {
+    if (historyIndex < history.length - 1) {
+      historyIndex++;
+      ctx.putImageData(history[historyIndex], 0, 0);
+      updateButtons();
+    }
+  };
+
   document.getElementById('btn-clear').onclick = () => {
     if(confirm('¿Seguro que quieres borrar todo el dibujo?')) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      saveState();
     }
   };
 
   document.getElementById('btn-save').onclick = () => {
+    // Si el canvas es transparente y el fondo del tema es oscuro, al guardar se verá transparente.
+    // Para solucionarlo, creamos un canvas temporal con fondo blanco/oscuro para exportar.
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportCtx = exportCanvas.getContext('2d');
+    
+    // Fondo blanco o negro según el modo
+    const isDark = document.documentElement.dataset.modo === 'oscuro';
+    exportCtx.fillStyle = isDark ? '#1a1a1f' : '#ffffff';
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    
+    exportCtx.drawImage(canvas, 0, 0);
+    
     const link = document.createElement('a');
     link.download = `MiDibujo_${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = exportCanvas.toDataURL('image/png');
     link.click();
   };
 </script>
