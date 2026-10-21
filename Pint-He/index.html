@@ -37,7 +37,23 @@
     display: flex; align-items: center; gap: 12px;
     padding: 8px 12px; border-bottom: 1px solid var(--line);
     background: var(--card); flex-shrink: 0;
-    overflow-x: auto; /* Por si la ventana es muy angosta */
+    overflow-x: auto; 
+    padding-bottom: 10px; /* Espacio extra para la scrollbar */
+  }
+
+  /* ESTILOS DE LA SCROLLBAR DE LA BARRA DE HERRAMIENTAS */
+  .toolbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .toolbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .toolbar::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+  }
+  .toolbar::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
   }
   
   .tool-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
@@ -213,7 +229,6 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    // Evitar reiniciar el historial si no hubo un cambio de tamaño real
     if (tempCanvas.width !== canvas.width || tempCanvas.height !== canvas.height) {
       history = [];
       historyIndex = -1;
@@ -273,13 +288,12 @@
   canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
   canvas.addEventListener('touchend', stopDrawing);
 
-  // Selección de color desde la paleta
   document.querySelectorAll('.swatch').forEach(sw => {
     sw.onclick = () => {
       document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
       sw.classList.add('active');
       currentColor = sw.dataset.color;
-      document.getElementById('tool-pencil').click(); // Cambia a pincel
+      document.getElementById('tool-pencil').click();
     };
   });
 
@@ -316,7 +330,6 @@
   btnUndo.onclick = doUndo;
   btnRedo.onclick = doRedo;
 
-  // ATAJOS DE TECLADO (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.metaKey) {
       if (e.key.toLowerCase() === 'z') {
