@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Ace Editor y JSZip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --sidebar-bg: #f1f5f9;
+    --editor-bg: #1e1e1e; /* VS Code Dark */
+  }
+  
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+    --sidebar-bg: #1e1e1e;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+    overflow: hidden;
+  }
+
+  /* Barra Superior */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+  }
+  .topbar-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .topbar-title svg { color: var(--accent); width: 18px; height: 18px; }
+  
+  .btn-export {
+    background: var(--accent); color: #fff; border: none; padding: 6px 14px;
+    border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; transition: 0.2s;
+  }
+  .btn-export:hover { filter: brightness(1.1); }
+  .btn-export svg { width: 14px; height: 14px; }
+
+  /* Layout Principal */
+  .main-layout {
+    display: flex; flex: 1; overflow: hidden;
+  }
+
+  /* Sidebar (Explorador) */
+  .sidebar {
+    width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; flex-shrink: 0;
+    color: var(--text);
+  }
+  
+  .sidebar-header {
+    padding: 10px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--muted); display: flex; justify-content: space-between; align-items: center;
+  }
+  .sidebar-actions { display: flex; gap: 4px; }
+  .btn-icon {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-icon:hover { background: var(--line); color: var(--text); }
+  .btn-icon svg { width: 14px; height: 14px; }
+
+  .file-tree {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+    font-size: 13px;
+  }
+
+  .tree-item {
+    display: flex; align-items: center; gap: 6px; padding: 4px 12px;
+    cursor: pointer; color: var(--text); user-select: none;
+  }
+  .tree-item:hover { background: var(--line); }
+  .tree-item.active { background: var(--accent-soft); color: var(--accent); }
+  .tree-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .tree-item .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tree-item .actions { display: none; gap: 2px; }
+  .tree-item:hover .actions { display: flex; }
+  .tree-item .actions button { background: transparent; border: none; padding: 2px; color: var(--muted); cursor: pointer; border-radius: 4px; }
+  .tree-item .actions button:hover { color: var(--text); background: rgba(0,0,0,0.1); }
+  .tree-item .actions svg { width: 12px; height: 12px; }
+
+  /* Editor Area */
+  .editor-area {
+    flex: 1; display: flex; flex-direction: column; background: var(--editor-bg);
+    position: relative;
+  }
+  
+  #editor-container {
+    flex: 1; width: 100%; height: 100%;
+  }
+
+  /* Status Bar */
+  .statusbar {
+    height: 24px; background: var(--accent); color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px; font-size: 11px; font-weight: 500;
+    flex-shrink: 0;
+  }
+  .status-left, .status-right { display: flex; gap: 16px; }
+
+  /* Empty State */
+  .empty-state {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; color: #666;
+    font-size: 14px; gap: 10px; pointer-events: none;
+  }
+  .empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+      Cod-He
+    </div>
+    <button class="btn-export" id="btn-export">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      Exportar ZIP
+    </button>
+  </div>
+
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        Explorador
+        <div class="sidebar-actions">
+          <button class="btn-icon" id="btn-new-file" title="Nuevo Archivo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+          </button>
+          <button class="btn-icon" id="btn-new-folder" title="Nueva Carpeta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="file-tree" id="file-tree"></div>
+    </div>
+
+    <!-- Editor -->
+    <div class="editor-area">
+      <div id="editor-container"></div>
+      <div class="empty-state" id="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+        Selecciona o crea un archivo para empezar
+      </div>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <div class="status-left">
+      <span id="status-file">Sin archivo</span>
+    </div>
+    <div class="status-right">
+      <span id="status-lang">Texto plano</span>
+      <span id="status-pos">Ln 1, Col 1</span>
+    </div>
+  </div>
+
+<script>
+  // Sincronización de Tema
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  // Inicializar Ace Editor
+  const editor = ace.edit("editor-container");
+  editor.setTheme("ace/theme/tomorrow_night"); // Tema oscuro fijo para el código
+  editor.session.setMode("ace/mode/text");
+  editor.setOptions({
+    fontSize: "14px",
+    showPrintMargin: false,
+    enableBasicAutocompletion: true,
+    enableLiveAutocompletion: true
+  });
+
+  // Actualizar posición del cursor en la barra de estado
+  editor.session.selection.on('changeCursor', () => {
+    const pos = editor.getCursorPosition();
+    document.getElementById('status-pos').textContent = `Ln ${pos.row + 1}, Col ${pos.column + 1}`;
+  });
+
+  // Sistema de Archivos (Flat array con parentId)
+  let files = JSON.parse(localStorage.getItem('codhe_files')) || [];
+  let activeFileId = null;
+
+  // Datos por defecto si está vacío
+  if (files.length === 0) {
+    files = [
+      { id: 'root', parent: null, name: 'Mi Proyecto', type: 'folder' },
+      { id: 'f1', parent: 'root', name: 'index.html', type: 'file', content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Hola</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>' },
+      { id: 'f2', parent: 'root', name: 'style.css', type: 'file', content: 'body {\n  background: #222;\n  color: #fff;\n}' },
+      { id: 'f3', parent: 'root', name: 'script.js', type: 'file', content: 'console.log("Hola desde JS");' }
+    ];
+    saveToStorage();
+  }
+
+  const fileTreeEl = document.getElementById('file-tree');
+  const emptyState = document.getElementById('empty-state');
+  const statusFile = document.getElementById('status-file');
+  const statusLang = document.getElementById('status-lang');
+
+  const saveToStorage = () => {
+    localStorage.setItem('codhe_files', JSON.stringify(files));
+  };
+
+  // Encontrar lenguaje por extensión
+  const getLanguage = (filename) => {
+    if (filename.endsWith('.html')) return 'html';
+    if (filename.endsWith('.css')) return 'css';
+    if (filename.endsWith('.js')) return 'javascript';
+    if (filename.endsWith('.json')) return 'json';
+    if (filename.endsWith('.md')) return 'markdown';
+    if (filename.endsWith('.py')) return 'python';
+    return 'text';
+  };
+
+  // Renderizar árbol
+  const renderTree = () => {
+    fileTreeEl.innerHTML = '';
+    
+    // Ordenar carpetas primero, luego archivos
+    const sortedFiles = [...files].sort((a, b) => {
+      if (a.type === b.type) return a.name.localeCompare(b.name);
+      return a.type === 'folder' ? -1 : 1;
+    });
+
+    const buildTree = (parentId, depth) => {
+      const children = sortedFiles.filter(f => f.parent === parentId);
+      
+      children.forEach(child => {
+        const div = document.createElement('div');
+        div.className = 'tree-item' + (activeFileId === child.id ? ' active' : '');
+        div.style.paddingLeft = `${12 + (depth * 12)}px`;
+        
+        const isFolder = child.type === 'folder';
+        const icon = isFolder 
+          ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`
+          : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+
+        div.innerHTML = `
+          ${icon}
+          <span class="name">${child.name}</span>
+          <div class="actions">
+            <button onclick="renameItem(event, '${child.id}')" title="Renombrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+            <button onclick="deleteItem(event, '${child.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+          </div>
+        `;
+
+        div.onclick = (e) => {
+          if (e.target.closest('.actions')) return;
+          if (isFolder) return; // Las carpetas solo se expanden (simplificado)
+          openFile(child.id);
+        };
+
+        fileTreeEl.appendChild(div);
+        
+        if (isFolder) {
+          buildTree(child.id, depth + 1);
+        }
+      });
+    };
+
+    buildTree('root', 0);
+  };
+
+  // Abrir archivo en el editor
+  const openFile = (id) => {
+    const file = files.find(f => f.id === id);
+    if (!file || file.type === 'folder') return;
+
+    activeFileId = id;
+    renderTree();
+    
+    emptyState.style.display = 'none';
+    editor.setValue(file.content || '', -1);
+    editor.session.setMode(`ace/mode/${getLanguage(file.name)}`);
+    editor.focus();
+    
+    statusFile.textContent = file.name;
+    statusLang.textContent = getLanguage(file.name).toUpperCase();
+  };
+
+  // Guardado automático al escribir
+  editor.session.on('change', () => {
+    if (!activeFileId) return;
+    const file = files.find(f => f.id === activeFileId);
+    if (file) {
+      file.content = editor.getValue();
+      saveToStorage();
+    }
+  });
+
+  // Generar ID único
+  const generateId = () => Math.random().toString(36).substr(2, 9);
+
+  // Crear archivo/carpeta
+  document.getElementById('btn-new-file').onclick = () => {
+    const name = prompt('Nombre del archivo (ej. index.html):');
+    if (!name) return;
+    files.push({ id: generateId(), parent: 'root', name, type: 'file', content: '' });
+    saveToStorage();
+    renderTree();
+  };
+
+  document.getElementById('btn-new-folder').onclick = () => {
+    const name = prompt('Nombre de la carpeta:');
+    if (!name) return;
+    files.push({ id: generateId(), parent: 'root', name, type: 'folder' });
+    saveToStorage();
+    renderTree();
+  };
+
+  // Renombrar y Eliminar
+  window.renameItem = (e, id) => {
+    e.stopPropagation();
+    const file = files.find(f => f.id === id);
+    const newName = prompt('Nuevo nombre:', file.name);
+    if (newName && newName !== file.name) {
+      file.name = newName;
+      saveToStorage();
+      renderTree();
+      if (activeFileId === id) {
+        statusFile.textContent = newName;
+        editor.session.setMode(`ace/mode/${getLanguage(newName)}`);
+        statusLang.textContent = getLanguage(newName).toUpperCase();
+      }
+    }
+  };
+
+  window.deleteItem = (e, id) => {
+    e.stopPropagation();
+    if (!confirm('¿Eliminar este elemento?')) return;
+    
+    // Eliminar hijos recursivamente si es carpeta
+    const deleteRecursive = (targetId) => {
+      const children = files.filter(f => f.parent === targetId);
+      children.forEach(c => deleteRecursive(c.id));
+      files = files.filter(f => f.id !== targetId);
+    };
+    
+    deleteRecursive(id);
+    saveToStorage();
+    
+    if (activeFileId === id) {
+      activeFileId = null;
+      editor.setValue('');
+      emptyState.style.display = 'flex';
+      statusFile.textContent = 'Sin archivo';
+      statusLang.textContent = 'Texto plano';
+    }
+    renderTree();
+  };
+
+  // Exportar a ZIP
+  document.getElementById('btn-export').onclick = async () => {
+    if (files.length <= 1) return alert('No hay archivos para exportar.');
+    
+    const zip = new JSZip();
+
+    // Función para obtener el path completo de un archivo
+    const getFullPath = (fileId) => {
+      let path = [];
+      let current = files.find(f => f.id === fileId);
+      while (current && current.id !== 'root') {
+        path.unshift(current.name);
+        current = files.find(f => f.id === current.parent);
+      }
+      return path.join('/');
+    };
+
+    // Añadir archivos al ZIP
+    files.forEach(f => {
+      if (f.type === 'file') {
+        const path = getFullPath(f.id);
+        zip.file(path, f.content || '');
+      }
+    });
+
+    try {
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CodHe_Project_${Date.now()}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Error al generar el ZIP');
+    }
+  };
+
+  // Iniciar
+  renderTree();
+</script>
+</body>
+</html>
