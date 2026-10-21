@@ -90,14 +90,11 @@
   /* Por Horas */
   .hourly-forecast {
     display: flex; gap: 12px; overflow-x: auto;
-    padding-bottom: 12px; /* Un poco más de padding para la barra */
-    
-    /* Estilos de la barra de scroll */
+    padding-bottom: 12px;
     scrollbar-width: thin;
     scrollbar-color: var(--line) transparent;
   }
   
-  /* Webkit (Chrome, Edge, Safari) */
   .hourly-forecast::-webkit-scrollbar {
     height: 6px;
     display: block;
@@ -142,6 +139,24 @@
   .daily-temps { font-size: 14px; font-weight: 600; display: flex; gap: 12px; width: 80px; justify-content: flex-end; }
   .daily-max { color: var(--text); }
   .daily-min { color: var(--muted); }
+
+  /* Créditos de la API */
+  .app-credit {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 10px;
+    padding-bottom: 10px;
+    opacity: 0.8;
+  }
+  .app-credit a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .app-credit a:hover {
+    text-decoration: underline;
+  }
 
   /* Cargando */
   .loader {
@@ -299,7 +314,14 @@
         `;
       }
 
-      html += `</div></div>`;
+      // Añadimos el crédito de Open-Meteo al final del contenido
+      html += `
+        </div></div>
+        <div class="app-credit">
+          Datos meteorológicos por <a href="https://open-meteo.com/" target="_blank">Open-Meteo</a>
+        </div>
+      `;
+      
       contentEl.innerHTML = html;
       
       if (window.lucide) lucide.createIcons();
