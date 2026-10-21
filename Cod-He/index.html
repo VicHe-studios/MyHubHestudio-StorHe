@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Ace Editor y JSZip -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.7/ace.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -17,7 +16,7 @@
     --card: #ffffff;
     --field: #f6f8fb;
     --sidebar-bg: #f1f5f9;
-    --editor-bg: #1e1e1e; /* VS Code Dark */
+    --editor-bg: #1e1e1e;
   }
   
   html[data-modo="oscuro"] {
@@ -56,10 +55,10 @@
 
   /* Layout Principal */
   .main-layout {
-    display: flex; flex: 1; overflow: hidden;
+    display: flex; flex: 1; overflow: hidden; min-height: 0;
   }
 
-  /* Sidebar (Explorador) */
+  /* Sidebar */
   .sidebar {
     width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--line);
     display: flex; flex-direction: column; flex-shrink: 0;
@@ -100,11 +99,12 @@
   /* Editor Area */
   .editor-area {
     flex: 1; display: flex; flex-direction: column; background: var(--editor-bg);
-    position: relative;
+    position: relative; min-width: 0;
   }
   
   #editor-container {
-    flex: 1; width: 100%; height: 100%;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
   }
 
   /* Status Bar */
@@ -120,9 +120,32 @@
   .empty-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; color: #666;
-    font-size: 14px; gap: 10px; pointer-events: none;
+    font-size: 14px; gap: 10px; pointer-events: none; text-align: center; padding: 20px;
   }
   .empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); width: 90%; max-width: 300px; padding: 20px;
+    border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column; gap: 12px; color: var(--text);
+  }
+  .modal h3 { margin: 0; font-size: 16px; }
+  .modal input {
+    padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--field); color: var(--text); font-family: inherit; font-size: 13px; outline: none;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn:hover { filter: brightness(1.1); }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); border-radius: 4px; }
@@ -142,7 +165,6 @@
   </div>
 
   <div class="main-layout">
-    <!-- Sidebar -->
     <div class="sidebar">
       <div class="sidebar-header">
         Explorador
@@ -158,12 +180,11 @@
       <div class="file-tree" id="file-tree"></div>
     </div>
 
-    <!-- Editor -->
     <div class="editor-area">
       <div id="editor-container"></div>
       <div class="empty-state" id="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-        Selecciona o crea un archivo para empezar
+        <span>Selecciona o crea un archivo<br>para empezar</span>
       </div>
     </div>
   </div>
@@ -178,8 +199,19 @@
     </div>
   </div>
 
+  <!-- Modal para crear/renombrar -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h3 id="modal-title">Nuevo Archivo</h3>
+      <input type="text" id="modal-input" placeholder="Nombre...">
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel">Cancelar</button>
+        <button class="btn primary" id="btn-save">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
 <script>
-  // Sincronización de Tema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -189,34 +221,33 @@
     }
   });
 
-  // Inicializar Ace Editor
   const editor = ace.edit("editor-container");
-  editor.setTheme("ace/theme/tomorrow_night"); // Tema oscuro fijo para el código
+  editor.setTheme("ace/theme/tomorrow_night");
   editor.session.setMode("ace/mode/text");
   editor.setOptions({
     fontSize: "14px",
+    fontFamily: "Consolas, 'Courier New', monospace",
     showPrintMargin: false,
     enableBasicAutocompletion: true,
     enableLiveAutocompletion: true
   });
 
-  // Actualizar posición del cursor en la barra de estado
+  // Ajustar el editor cuando cambie el tamaño de la ventana
+  window.addEventListener('resize', () => editor.resize());
+
   editor.session.selection.on('changeCursor', () => {
     const pos = editor.getCursorPosition();
     document.getElementById('status-pos').textContent = `Ln ${pos.row + 1}, Col ${pos.column + 1}`;
   });
 
-  // Sistema de Archivos (Flat array con parentId)
   let files = JSON.parse(localStorage.getItem('codhe_files')) || [];
   let activeFileId = null;
 
-  // Datos por defecto si está vacío
   if (files.length === 0) {
     files = [
       { id: 'root', parent: null, name: 'Mi Proyecto', type: 'folder' },
       { id: 'f1', parent: 'root', name: 'index.html', type: 'file', content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Hola</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>' },
-      { id: 'f2', parent: 'root', name: 'style.css', type: 'file', content: 'body {\n  background: #222;\n  color: #fff;\n}' },
-      { id: 'f3', parent: 'root', name: 'script.js', type: 'file', content: 'console.log("Hola desde JS");' }
+      { id: 'f2', parent: 'root', name: 'style.css', type: 'file', content: 'body {\n  background: #222;\n  color: #fff;\n}' }
     ];
     saveToStorage();
   }
@@ -226,11 +257,8 @@
   const statusFile = document.getElementById('status-file');
   const statusLang = document.getElementById('status-lang');
 
-  const saveToStorage = () => {
-    localStorage.setItem('codhe_files', JSON.stringify(files));
-  };
+  const saveToStorage = () => localStorage.setItem('codhe_files', JSON.stringify(files));
 
-  // Encontrar lenguaje por extensión
   const getLanguage = (filename) => {
     if (filename.endsWith('.html')) return 'html';
     if (filename.endsWith('.css')) return 'css';
@@ -241,11 +269,9 @@
     return 'text';
   };
 
-  // Renderizar árbol
   const renderTree = () => {
     fileTreeEl.innerHTML = '';
     
-    // Ordenar carpetas primero, luego archivos
     const sortedFiles = [...files].sort((a, b) => {
       if (a.type === b.type) return a.name.localeCompare(b.name);
       return a.type === 'folder' ? -1 : 1;
@@ -274,23 +300,18 @@
         `;
 
         div.onclick = (e) => {
-          if (e.target.closest('.actions')) return;
-          if (isFolder) return; // Las carpetas solo se expanden (simplificado)
+          if (e.target.closest('.actions') || isFolder) return;
           openFile(child.id);
         };
 
         fileTreeEl.appendChild(div);
-        
-        if (isFolder) {
-          buildTree(child.id, depth + 1);
-        }
+        if (isFolder) buildTree(child.id, depth + 1);
       });
     };
 
     buildTree('root', 0);
   };
 
-  // Abrir archivo en el editor
   const openFile = (id) => {
     const file = files.find(f => f.id === id);
     if (!file || file.type === 'folder') return;
@@ -301,13 +322,13 @@
     emptyState.style.display = 'none';
     editor.setValue(file.content || '', -1);
     editor.session.setMode(`ace/mode/${getLanguage(file.name)}`);
+    editor.resize(); // Importante para que Ace se dibuje bien
     editor.focus();
     
     statusFile.textContent = file.name;
     statusLang.textContent = getLanguage(file.name).toUpperCase();
   };
 
-  // Guardado automático al escribir
   editor.session.on('change', () => {
     if (!activeFileId) return;
     const file = files.find(f => f.id === activeFileId);
@@ -317,48 +338,73 @@
     }
   });
 
-  // Generar ID único
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // Crear archivo/carpeta
+  // Modal Custom
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modal-title');
+  const modalInput = document.getElementById('modal-input');
+  let modalCallback = null;
+
+  const showPrompt = (title, defaultValue, callback) => {
+    modalTitle.textContent = title;
+    modalInput.value = defaultValue;
+    modalCallback = callback;
+    modal.classList.add('active');
+    modalInput.focus();
+  };
+
+  document.getElementById('btn-cancel').onclick = () => modal.classList.remove('active');
+  
+  document.getElementById('btn-save').onclick = () => {
+    if (modalCallback) modalCallback(modalInput.value.trim());
+    modal.classList.remove('active');
+  };
+
+  modalInput.onkeydown = (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-save').click();
+  };
+
+  // Nuevos elementos
   document.getElementById('btn-new-file').onclick = () => {
-    const name = prompt('Nombre del archivo (ej. index.html):');
-    if (!name) return;
-    files.push({ id: generateId(), parent: 'root', name, type: 'file', content: '' });
-    saveToStorage();
-    renderTree();
+    showPrompt('Nuevo Archivo', 'nuevo.txt', (name) => {
+      if (!name) return;
+      files.push({ id: generateId(), parent: 'root', name, type: 'file', content: '' });
+      saveToStorage();
+      renderTree();
+    });
   };
 
   document.getElementById('btn-new-folder').onclick = () => {
-    const name = prompt('Nombre de la carpeta:');
-    if (!name) return;
-    files.push({ id: generateId(), parent: 'root', name, type: 'folder' });
-    saveToStorage();
-    renderTree();
+    showPrompt('Nueva Carpeta', 'nueva_carpeta', (name) => {
+      if (!name) return;
+      files.push({ id: generateId(), parent: 'root', name, type: 'folder' });
+      saveToStorage();
+      renderTree();
+    });
   };
 
-  // Renombrar y Eliminar
   window.renameItem = (e, id) => {
     e.stopPropagation();
     const file = files.find(f => f.id === id);
-    const newName = prompt('Nuevo nombre:', file.name);
-    if (newName && newName !== file.name) {
-      file.name = newName;
-      saveToStorage();
-      renderTree();
-      if (activeFileId === id) {
-        statusFile.textContent = newName;
-        editor.session.setMode(`ace/mode/${getLanguage(newName)}`);
-        statusLang.textContent = getLanguage(newName).toUpperCase();
+    showPrompt('Renombrar', file.name, (newName) => {
+      if (newName && newName !== file.name) {
+        file.name = newName;
+        saveToStorage();
+        renderTree();
+        if (activeFileId === id) {
+          statusFile.textContent = newName;
+          editor.session.setMode(`ace/mode/${getLanguage(newName)}`);
+          statusLang.textContent = getLanguage(newName).toUpperCase();
+        }
       }
-    }
+    });
   };
 
   window.deleteItem = (e, id) => {
     e.stopPropagation();
     if (!confirm('¿Eliminar este elemento?')) return;
     
-    // Eliminar hijos recursivamente si es carpeta
     const deleteRecursive = (targetId) => {
       const children = files.filter(f => f.parent === targetId);
       children.forEach(c => deleteRecursive(c.id));
@@ -378,13 +424,10 @@
     renderTree();
   };
 
-  // Exportar a ZIP
   document.getElementById('btn-export').onclick = async () => {
     if (files.length <= 1) return alert('No hay archivos para exportar.');
-    
     const zip = new JSZip();
 
-    // Función para obtener el path completo de un archivo
     const getFullPath = (fileId) => {
       let path = [];
       let current = files.find(f => f.id === fileId);
@@ -395,12 +438,8 @@
       return path.join('/');
     };
 
-    // Añadir archivos al ZIP
     files.forEach(f => {
-      if (f.type === 'file') {
-        const path = getFullPath(f.id);
-        zip.file(path, f.content || '');
-      }
+      if (f.type === 'file') zip.file(getFullPath(f.id), f.content || '');
     });
 
     try {
@@ -411,12 +450,9 @@
       a.download = `CodHe_Project_${Date.now()}.zip`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e) {
-      alert('Error al generar el ZIP');
-    }
+    } catch (e) { alert('Error al generar el ZIP'); }
   };
 
-  // Iniciar
   renderTree();
 </script>
 </body>
