@@ -78,6 +78,9 @@
   }
   .tree-item:hover { background: var(--line); }
   .tree-item.active { background: var(--accent-soft); color: var(--accent); }
+  /* Carpeta seleccionada para guardar archivos nuevos */
+  .tree-item.folder-active { background: var(--line); color: var(--accent); }
+  
   .tree-item svg { width: 14px; height: 14px; flex-shrink: 0; }
   .tree-item .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tree-item .actions { display: none; gap: 2px; }
@@ -107,7 +110,7 @@
   }
   .empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
 
-  /* Modal */
+  /* Modales */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
     display: none; align-items: center; justify-content: center; z-index: 9999;
@@ -119,11 +122,11 @@
     display: flex; flex-direction: column; gap: 12px; color: var(--text);
   }
   .modal h3 { margin: 0; font-size: 16px; }
-  .modal input {
+  .modal input, .modal select {
     padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
     background: var(--field); color: var(--text); font-family: inherit; font-size: 13px; outline: none;
   }
-  .modal input:focus { border-color: var(--accent); }
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
   .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
   .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
@@ -152,7 +155,7 @@
       <div class="sidebar-header">
         Explorador
         <div class="sidebar-actions">
-          <button class="btn-icon" id="btn-new-file" title="Nuevo Archivo">
+          <button class="btn-icon" id="btn-new-file" title="Nuevo Archivo (se crea en la carpeta seleccionada)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
           </button>
           <button class="btn-icon" id="btn-new-folder" title="Nueva Carpeta">
@@ -183,13 +186,25 @@
   </div>
 
   <!-- Modal para crear/renombrar -->
-  <div class="modal-overlay" id="modal">
+  <div class="modal-overlay" id="modal-prompt">
     <div class="modal">
       <h3 id="modal-title">Nuevo Archivo</h3>
       <input type="text" id="modal-input" placeholder="Nombre...">
       <div class="modal-actions">
-        <button class="btn gray" id="btn-cancel">Cancelar</button>
-        <button class="btn primary" id="btn-save">Aceptar</button>
+        <button class="btn gray" onclick="document.getElementById('modal-prompt').classList.remove('active')">Cancelar</button>
+        <button class="btn primary" id="btn-prompt-save">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para mover archivo -->
+  <div class="modal-overlay" id="modal-move">
+    <div class="modal">
+      <h3>Mover Archivo</h3>
+      <select id="move-select"></select>
+      <div class="modal-actions">
+        <button class="btn gray" onclick="document.getElementById('modal-move').classList.remove('active')">Cancelar</button>
+        <button class="btn primary" id="btn-move-save">Mover</button>
       </div>
     </div>
   </div>
@@ -204,7 +219,6 @@
     }
   });
 
-  // 1. Inicializar Ace
   const editor = ace.edit("editor-container");
   editor.setTheme("ace/theme/tomorrow_night");
   editor.session.setMode("ace/mode/text");
@@ -215,8 +229,6 @@
     enableBasicAutocompletion: true,
     enableLiveAutocompletion: true
   });
-  
-  // Bloquear el editor hasta que se seleccione un archivo
   editor.setReadOnly(true); 
 
   window.addEventListener('resize', () => editor.resize());
@@ -226,21 +238,53 @@
     document.getElementById('status-pos').textContent = `Ln ${pos.row + 1}, Col ${pos.column + 1}`;
   });
 
-  // 2. Lógica del Sistema de Archivos
   let files = [];
   let activeFileId = null;
+  let activeFolderId = 'root'; // Carpeta seleccionada para crear archivos
 
   try {
-    const stored = localStorage.getItem('codhe_files_v2');
+    const stored = localStorage.getItem('codhe_files_v3');
     if (stored) files = JSON.parse(stored);
   } catch(e) { files = []; }
 
-  // Si no hay archivos o la estructura está corrupta, crear por defecto
   if (!Array.isArray(files) || files.length === 0 || !files.find(f => f.id === 'root')) {
     files = [
       { id: 'root', parent: null, name: 'Mi Proyecto', type: 'folder' },
-      { id: 'f1', parent: 'root', name: 'index.html', type: 'file', content: '<!DOCTYPE html>\n<html>\n<head>\n  <title>Hola</title>\n</head>\n<body>\n  <h1>Hola Mundo</h1>\n</body>\n</html>' },
-      { id: 'f2', parent: 'root', name: 'style.css', type: 'file', content: 'body {\n  background: #222;\n  color: #fff;\n}' }
+      { 
+        id: 'f1', parent: 'root', name: 'index.html', type: 'file', 
+        content: `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* Regla de oro de MyHub */
+    html, body { height: 100vh; width: 100%; margin: 0; overflow: hidden; }
+    body { 
+      background: var(--card); 
+      color: var(--text); 
+      font-family: sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+    }
+  </style>
+</head>
+<body>
+  <h1>¡Hola MyHub!</h1>
+  <p>Tu app está lista para despegar.</p>
+</body>
+</html>` 
+      },
+      { 
+        id: 'f2', parent: 'root', name: 'manifest.json', type: 'file', 
+        content: `{
+  "id": "mi-app",
+  "titulo": "Mi App",
+  "icono": "box",
+  "main": "index.html",
+  "autor": "Tu Nombre",
+  "descripcion": "Una app increíble para MyHub"
+}` 
+      }
     ];
   }
 
@@ -249,7 +293,7 @@
   const statusFile = document.getElementById('status-file');
   const statusLang = document.getElementById('status-lang');
 
-  const saveToStorage = () => localStorage.setItem('codhe_files_v2', JSON.stringify(files));
+  const saveToStorage = () => localStorage.setItem('codhe_files_v3', JSON.stringify(files));
 
   const getLanguage = (filename) => {
     if (!filename) return 'text';
@@ -275,26 +319,44 @@
       
       children.forEach(child => {
         const div = document.createElement('div');
-        div.className = 'tree-item' + (activeFileId === child.id ? ' active' : '');
+        const isFolder = child.type === 'folder';
+        
+        // Clases de estado: active para archivo abierto, folder-active para carpeta seleccionada
+        let className = 'tree-item';
+        if (activeFileId === child.id && !isFolder) className += ' active';
+        if (activeFolderId === child.id && isFolder) className += ' folder-active';
+        div.className = className;
+
         div.style.paddingLeft = `${12 + (depth * 12)}px`;
         
-        const isFolder = child.type === 'folder';
         const icon = isFolder 
           ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`
           : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+
+        // Botones de acción extra (Mover solo para archivos)
+        let moveBtn = isFolder ? '' : `<button onclick="moveItem(event, '${child.id}')" title="Mover a carpeta..."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><polyline points="12 11 12 17"></polyline><polyline points="9 14 12 11 15 14"></polyline></svg></button>`;
 
         div.innerHTML = `
           ${icon}
           <span class="name">${child.name}</span>
           <div class="actions">
+            ${moveBtn}
             <button onclick="renameItem(event, '${child.id}')" title="Renombrar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
             <button onclick="deleteItem(event, '${child.id}')" title="Eliminar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
           </div>
         `;
 
         div.onclick = (e) => {
-          if (e.target.closest('.actions') || isFolder) return;
-          openFile(child.id);
+          if (e.target.closest('.actions')) return;
+          if (isFolder) {
+            // Al hacer clic en carpeta, se selecciona como destino
+            activeFolderId = child.id;
+            renderTree();
+          } else {
+            // Al hacer clic en archivo, se abre en el editor
+            activeFolderId = child.parent; // También actualiza la carpeta destino
+            openFile(child.id);
+          }
         };
 
         fileTreeEl.appendChild(div);
@@ -313,7 +375,7 @@
     renderTree();
     
     emptyState.style.display = 'none';
-    editor.setReadOnly(false); // Desbloquear
+    editor.setReadOnly(false);
     editor.setValue(file.content || '', -1);
     editor.session.setMode(`ace/mode/${getLanguage(file.name)}`);
     editor.resize(); 
@@ -334,46 +396,85 @@
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // 3. Modal Custom
-  const modal = document.getElementById('modal');
+  // Modales
+  const modalPrompt = document.getElementById('modal-prompt');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
-  let modalCallback = null;
+  let promptCallback = null;
 
   const showPrompt = (title, defaultValue, callback) => {
     modalTitle.textContent = title;
     modalInput.value = defaultValue;
-    modalCallback = callback;
-    modal.classList.add('active');
-    modalInput.focus();
+    promptCallback = callback;
+    modalPrompt.classList.add('active');
+    setTimeout(() => modalInput.focus(), 50);
   };
 
-  document.getElementById('btn-cancel').onclick = () => modal.classList.remove('active');
-  
-  document.getElementById('btn-save').onclick = () => {
-    if (modalCallback) modalCallback(modalInput.value.trim());
-    modal.classList.remove('active');
+  document.getElementById('btn-prompt-save').onclick = () => {
+    if (promptCallback) promptCallback(modalInput.value.trim());
+    modalPrompt.classList.remove('active');
   };
 
   modalInput.onkeydown = (e) => {
-    if (e.key === 'Enter') document.getElementById('btn-save').click();
+    if (e.key === 'Enter') document.getElementById('btn-prompt-save').click();
   };
 
-  // 4. Botones de creación
+  // Modal de mover
+  const modalMove = document.getElementById('modal-move');
+  const moveSelect = document.getElementById('move-select');
+  let moveFileId = null;
+
+  window.moveItem = (e, id) => {
+    e.stopPropagation();
+    moveFileId = id;
+    
+    // Llenar el select con las carpetas disponibles (excepto la carpeta actual si es que está en una)
+    moveSelect.innerHTML = '';
+    const folders = files.filter(f => f.type === 'folder');
+    
+    folders.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.id === 'root' ? '/ (Raíz)' : f.name;
+      moveSelect.appendChild(opt);
+    });
+
+    // Seleccionar por defecto la carpeta actual del archivo
+    const currentFile = files.find(f => f.id === id);
+    if (currentFile) moveSelect.value = currentFile.parent;
+
+    modalMove.classList.add('active');
+  };
+
+  document.getElementById('btn-move-save').onclick = () => {
+    if (moveFileId) {
+      const file = files.find(f => f.id === moveFileId);
+      if (file) {
+        file.parent = moveSelect.value;
+        saveToStorage();
+        renderTree();
+      }
+    }
+    modalMove.classList.remove('active');
+  };
+
+  // Botones de creación
   document.getElementById('btn-new-file').onclick = () => {
     showPrompt('Nuevo Archivo', 'archivo.txt', (name) => {
       if (!name) return;
       const newId = generateId();
-      files.push({ id: newId, parent: 'root', name, type: 'file', content: '' });
+      // Se crea dentro de la carpeta actualmente seleccionada (activeFolderId)
+      files.push({ id: newId, parent: activeFolderId, name, type: 'file', content: '' });
       saveToStorage();
       renderTree();
-      openFile(newId); // Abrir automáticamente
+      openFile(newId);
     });
   };
 
   document.getElementById('btn-new-folder').onclick = () => {
     showPrompt('Nueva Carpeta', 'nueva_carpeta', (name) => {
       if (!name) return;
+      // Las carpetas siempre se crean en la raíz para evitar anidamientos infinitos en esta versión
       files.push({ id: generateId(), parent: 'root', name, type: 'folder' });
       saveToStorage();
       renderTree();
@@ -413,10 +514,13 @@
     if (activeFileId === id) {
       activeFileId = null;
       editor.setValue('');
-      editor.setReadOnly(true); // Volver a bloquear
+      editor.setReadOnly(true);
       emptyState.style.display = 'flex';
       statusFile.textContent = 'Sin archivo';
       statusLang.textContent = 'Texto plano';
+    }
+    if (activeFolderId === id) {
+      activeFolderId = 'root';
     }
     renderTree();
   };
