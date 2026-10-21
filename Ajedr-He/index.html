@@ -38,14 +38,24 @@
 
   .header {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 16px; border-bottom: 1px solid var(--line);
-    background: var(--card); flex-shrink: 0;
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0; flex-wrap: wrap; gap: 10px;
   }
+  .controls { display: flex; gap: 8px; align-items: center; }
+  
+  select {
+    padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--field); color: var(--text); font-size: 12px; font-weight: 600;
+    outline: none; cursor: pointer;
+  }
+  select:focus { border-color: var(--accent); }
+
   .turn-indicator {
-    font-size: 14px; font-weight: 700; color: var(--accent);
+    font-size: 13px; font-weight: 700; color: var(--accent);
     display: flex; align-items: center; gap: 6px;
   }
-  .turn-indicator span { font-size: 20px; }
+  .turn-indicator span { font-size: 18px; }
+  
   .btn-reset {
     background: var(--field); color: var(--text); border: 1px solid var(--line);
     padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600;
@@ -53,17 +63,15 @@
   }
   .btn-reset:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  /* Contenedor que se adapta al espacio disponible */
   .board-container {
     flex: 1; display: flex; align-items: center; justify-content: center;
     padding: 10px; background: var(--field); overflow: hidden;
   }
   
-  /* El tablero se mantiene cuadrado y se achica si es necesario */
   .board {
     display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
     width: 100%; 
-    max-width: min(100%, calc(100vh - 120px)); /* Evita scroll vertical */
+    max-width: min(100%, calc(100vh - 120px));
     max-height: 100%;
     aspect-ratio: 1;
     border: 2px solid var(--line); border-radius: 8px; overflow: hidden;
@@ -73,7 +81,7 @@
   
   .square {
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(24px, 6vh, 48px); /* Tamaño de pieza dinámico */
+    font-size: clamp(24px, 6vh, 48px);
     cursor: pointer; position: relative;
     transition: background 0.1s;
   }
@@ -97,8 +105,15 @@
 <body>
 
   <div class="header">
+    <div class="controls">
+      <select id="game-mode">
+        <option value="local">Local (2 Jugadores)</option>
+        <option value="cpu-easy">CPU (Fácil - Blancas)</option>
+        <option value="cpu-hard">CPU (Difícil - Blancas)</option>
+      </select>
+      <button class="btn-reset" id="btn-reset">Reiniciar</button>
+    </div>
     <div class="turn-indicator" id="turn-indicator"><span>♟️</span> Turno: Blancas</div>
-    <button class="btn-reset" id="btn-reset">Reiniciar</button>
   </div>
 
   <div class="board-container">
@@ -122,6 +137,7 @@
 
   let game = new Chess();
   let selectedSquare = null;
+  let isCPUTurn = false;
   
   const piecesMap = {
     'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
@@ -130,6 +146,7 @@
 
   const boardEl = document.getElementById('board');
   const turnIndicator = document.getElementById('turn-indicator');
+  const modeSelect = document.getElementById('game-mode');
 
   const renderBoard = () => {
     boardEl.innerHTML = '';
@@ -146,8 +163,6 @@
         const rank = 8 - row;
         const squareId = `${file}${rank}`;
         
-        squareEl.dataset.square = squareId;
-
         if (piece) {
           squareEl.textContent = piecesMap[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
           squareEl.classList.add(piece.color === 'w' ? 'piece-white' : 'piece-black');
@@ -169,17 +184,29 @@
       turnIndicator.innerHTML = `<span>🏁</span> ¡Juego Terminado!`;
     } else {
       const isWhite = game.turn() === 'w';
-      turnIndicator.innerHTML = `<span>${isWhite ? '♙' : '♟'}</span> Turno: ${isWhite ? 'Blancas' : 'Negras'}`;
+      turnIndicator.innerHTML = isCPUTurn ? `<span>⏳</span> CPU pensando...` : `<span>${isWhite ? '♙' : '♟'}</span> Turno: ${isWhite ? 'Blancas' : 'Negras'}`;
     }
   };
 
   const handleSquareClick = (square) => {
+    // Bloquear clics si es turno de la CPU o el juego terminó
+    if (isCPUTurn || game.game_over()) return;
+
     if (selectedSquare) {
       const move = game.move({ from: selectedSquare, to: square, promotion: 'q' });
       selectedSquare = null;
+      
       if (move === null) {
         const piece = game.get(square);
         if (piece && piece.color === game.turn()) selectedSquare = square;
+      } else {
+        // Si el movimiento fue exitoso y es modo CPU, hacemos que la máquina juegue
+        if (modeSelect.value.startsWith('cpu')) {
+          isCPUTurn = true;
+          renderBoard();
+          setTimeout(makeCPUMove, 600); // Retraso para simular "pensamiento"
+          return;
+        }
       }
       renderBoard();
     } else {
@@ -191,9 +218,57 @@
     }
   };
 
+  const makeCPUMove = () => {
+    if (game.game_over()) {
+      isCPUTurn = false;
+      return;
+    }
+
+    const difficulty = modeSelect.value;
+    const moves = game.moves({ verbose: true });
+    
+    if (moves.length === 0) return;
+
+    let bestMove = null;
+
+    if (difficulty === 'cpu-easy') {
+      // Movimiento aleatorio
+      bestMove = moves[Math.floor(Math.random() * moves.length)];
+    } else {
+      // CPU Difícil: Busca comer la pieza de mayor valor
+      const pieceValues = { p: 10, n: 30, b: 30, r: 50, q: 90, k: 900 };
+      let maxScore = -1;
+      
+      moves.forEach(m => {
+        let score = 0;
+        if (m.captured) score += pieceValues[m.captured];
+        if (m.promotion) score += pieceValues[m.promotion];
+        // Un pequeño aleatorio para que no siempre haga lo mismo
+        score += Math.random();
+        
+        if (score > maxScore) {
+          maxScore = score;
+          bestMove = m;
+        }
+      });
+    }
+
+    game.move(bestMove);
+    isCPUTurn = false;
+    renderBoard();
+  };
+
+  modeSelect.onchange = () => {
+    game.reset();
+    selectedSquare = null;
+    isCPUTurn = false;
+    renderBoard();
+  };
+
   document.getElementById('btn-reset').onclick = () => {
     game.reset();
     selectedSquare = null;
+    isCPUTurn = false;
     renderBoard();
   };
 
