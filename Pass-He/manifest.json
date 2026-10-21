@@ -1,0 +1,8 @@
+{
+  "id": "pass-he",
+  "titulo": "Pass-He",
+  "icono": "key-round",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Gestor de contraseñas local seguro"
+}
