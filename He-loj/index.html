@@ -30,7 +30,6 @@
     overflow: hidden;
   }
 
-  /* Pestañas */
   .tabs {
     display: flex; border-bottom: 1px solid var(--line); background: var(--card); flex-shrink: 0;
   }
@@ -46,18 +45,15 @@
     padding: 20px; overflow-y: auto;
   }
 
-  /* Vistas */
   .view { display: none; width: 100%; max-width: 300px; text-align: center; animation: fadeIn 0.3s ease-out; }
   .view.active { display: flex; flex-direction: column; align-items: center; }
 
-  /* Números gigantes */
   .time-display {
     font-size: 56px; font-weight: 700; font-variant-numeric: tabular-nums;
     letter-spacing: -2px; margin-bottom: 8px; line-height: 1;
   }
   .date-display { font-size: 14px; color: var(--muted); font-weight: 500; text-transform: capitalize; }
 
-  /* Botones */
   .btn-group { display: flex; gap: 10px; margin-top: 24px; justify-content: center; }
   .btn {
     background: var(--field); border: 1px solid var(--line); color: var(--text);
@@ -70,16 +66,25 @@
   .btn.danger { color: #ef4444; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* Inputs de tiempo */
-  .time-inputs { display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; }
+  /* Inputs de tiempo corregidos */
+  .time-inputs { display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; align-items: center; }
   .time-inputs input {
     width: 70px; text-align: center; font-size: 24px; font-weight: 700;
     padding: 10px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--field); color: var(--text); outline: none;
+    font-family: inherit;
+    /* Ocultar flechitas nativas */
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .time-inputs input::-webkit-outer-spin-button,
+  .time-inputs input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
   .time-inputs input:focus { border-color: var(--accent); }
+  .time-inputs span { font-size: 24px; font-weight: 700; color: var(--muted); }
 
-  /* Lista de vueltas */
   .laps-list {
     width: 100%; height: 120px; overflow-y: auto; margin-top: 16px;
     border-top: 1px solid var(--line); padding-top: 8px;
@@ -129,8 +134,9 @@
     <!-- Temporizador -->
     <div class="view" id="view-timer">
       <div class="time-inputs">
-        <input type="number" id="t-min" min="0" max="99" value="5" placeholder="Min">
-        <input type="number" id="t-sec" min="0" max="59" value="0" placeholder="Seg">
+        <input type="text" inputmode="numeric" id="t-min" value="05" maxlength="2">
+        <span>:</span>
+        <input type="text" inputmode="numeric" id="t-sec" value="00" maxlength="2">
       </div>
       <div class="time-display" id="timer-time">05:00</div>
       <div class="btn-group">
@@ -145,7 +151,6 @@
   </div>
 
 <script>
-  // Sincronización de Tema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -155,7 +160,6 @@
     }
   });
 
-  // Control de Pestañas
   document.querySelectorAll('.tab').forEach(tab => {
     tab.onclick = () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -165,29 +169,17 @@
     };
   });
 
-  // Lógica del Reloj
+  // Reloj
   const updateClock = () => {
     const now = new Date();
-    const time = now.toLocaleTimeString('es', { hour12: false });
-    const date = now.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
-    document.getElementById('clock-time').textContent = time;
-    document.getElementById('clock-date').textContent = date;
+    document.getElementById('clock-time').textContent = now.toLocaleTimeString('es', { hour12: false });
+    document.getElementById('clock-date').textContent = now.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
   };
-  setInterval(updateClock, 1000);
-  updateClock();
+  setInterval(updateClock, 1000); updateClock();
 
-  // Lógica del Cronómetro
-  let swInterval;
-  let swStartTime = 0;
-  let swElapsed = 0;
-  let isSwRunning = false;
-  let lapCount = 1;
-
-  const swTimeEl = document.getElementById('sw-time');
-  const swStartBtn = document.getElementById('sw-start');
-  const swLapBtn = document.getElementById('sw-lap');
-  const swResetBtn = document.getElementById('sw-reset');
-  const swLapsEl = document.getElementById('sw-laps');
+  // Cronómetro
+  let swInterval, swStartTime = 0, swElapsed = 0, isSwRunning = false, lapCount = 1;
+  const swTimeEl = document.getElementById('sw-time'), swStartBtn = document.getElementById('sw-start'), swLapBtn = document.getElementById('sw-lap'), swResetBtn = document.getElementById('sw-reset'), swLapsEl = document.getElementById('sw-laps');
 
   const formatSW = (ms) => {
     const min = Math.floor(ms / 60000).toString().padStart(2, '0');
@@ -196,59 +188,43 @@
     return `${min}:${sec}.${cent}`;
   };
 
-  const updateSW = () => {
-    swElapsed = Date.now() - swStartTime;
-    swTimeEl.textContent = formatSW(swElapsed);
-  };
-
   swStartBtn.onclick = () => {
     if (isSwRunning) {
       clearInterval(swInterval);
       swStartBtn.textContent = 'Continuar';
-      swStartBtn.classList.remove('danger');
-      swStartBtn.classList.add('primary');
+      swStartBtn.classList.remove('danger'); swStartBtn.classList.add('primary');
     } else {
       swStartTime = Date.now() - swElapsed;
-      swInterval = setInterval(updateSW, 10);
+      swInterval = setInterval(() => {
+        swElapsed = Date.now() - swStartTime;
+        swTimeEl.textContent = formatSW(swElapsed);
+      }, 10);
       swStartBtn.textContent = 'Pausar';
-      swStartBtn.classList.remove('primary');
-      swStartBtn.classList.add('danger');
+      swStartBtn.classList.remove('primary'); swStartBtn.classList.add('danger');
     }
     isSwRunning = !isSwRunning;
     swLapBtn.disabled = !isSwRunning && swElapsed === 0;
   };
 
   swResetBtn.onclick = () => {
-    clearInterval(swInterval);
-    isSwRunning = false;
-    swElapsed = 0;
-    swTimeEl.textContent = '00:00.00';
+    clearInterval(swInterval); isSwRunning = false; swElapsed = 0;
+    swTimeEl.textContent = '00:00.00'; swLapsEl.innerHTML = ''; lapCount = 1;
     swStartBtn.textContent = 'Iniciar';
-    swStartBtn.classList.remove('danger');
-    swStartBtn.classList.add('primary');
+    swStartBtn.classList.remove('danger'); swStartBtn.classList.add('primary');
     swLapBtn.disabled = true;
-    swLapsEl.innerHTML = '';
-    lapCount = 1;
   };
 
   swLapBtn.onclick = () => {
     const lapDiv = document.createElement('div');
     lapDiv.className = 'lap-item';
     lapDiv.innerHTML = `<span>Vuelta ${lapCount}</span><span>${formatSW(swElapsed)}</span>`;
-    swLapsEl.prepend(lapDiv);
-    lapCount++;
+    swLapsEl.prepend(lapDiv); lapCount++;
   };
 
-  // Lógica del Temporizador
-  let tInterval;
-  let tRemaining = 5 * 60; // 5 mins por defecto
-  let isTRunning = false;
-  
-  const tMinInput = document.getElementById('t-min');
-  const tSecInput = document.getElementById('t-sec');
-  const timerTimeEl = document.getElementById('timer-time');
-  const tStartBtn = document.getElementById('t-start');
-  const tResetBtn = document.getElementById('t-reset');
+  // Temporizador (Lógica mejorada)
+  let tInterval, tRemaining = 300, isTRunning = false;
+  const tMinInput = document.getElementById('t-min'), tSecInput = document.getElementById('t-sec');
+  const timerTimeEl = document.getElementById('timer-time'), tStartBtn = document.getElementById('t-start'), tResetBtn = document.getElementById('t-reset');
 
   const updateTimerDisplay = () => {
     const m = Math.floor(tRemaining / 60).toString().padStart(2, '0');
@@ -256,8 +232,27 @@
     timerTimeEl.textContent = `${m}:${s}`;
   };
 
-  tMinInput.oninput = tSecInput.oninput = () => {
+  // Validar que solo escriban números
+  const validateInput = (input, max) => {
+    input.value = input.value.replace(/[^0-9]/g, '');
+    if (input.value.length > 0) {
+      let val = parseInt(input.value);
+      if (val > max) input.value = max;
+    }
+  };
+
+  tMinInput.oninput = () => {
     if (isTRunning) return;
+    validateInput(tMinInput, 99);
+    const m = parseInt(tMinInput.value) || 0;
+    const s = parseInt(tSecInput.value) || 0;
+    tRemaining = (m * 60) + s;
+    updateTimerDisplay();
+  };
+
+  tSecInput.oninput = () => {
+    if (isTRunning) return;
+    validateInput(tSecInput, 59);
     const m = parseInt(tMinInput.value) || 0;
     const s = parseInt(tSecInput.value) || 0;
     tRemaining = (m * 60) + s;
@@ -268,26 +263,27 @@
     if (isTRunning) {
       clearInterval(tInterval);
       tStartBtn.textContent = 'Continuar';
-      tStartBtn.classList.remove('danger');
-      tStartBtn.classList.add('primary');
+      tStartBtn.classList.remove('danger'); tStartBtn.classList.add('primary');
     } else {
       if (tRemaining <= 0) return;
       tStartBtn.textContent = 'Pausar';
-      tStartBtn.classList.remove('primary');
-      tStartBtn.classList.add('danger');
+      tStartBtn.classList.remove('primary'); tStartBtn.classList.add('danger');
       
       tInterval = setInterval(() => {
         tRemaining--;
         updateTimerDisplay();
-        
         if (tRemaining <= 0) {
-          clearInterval(tInterval);
-          isTRunning = false;
+          clearInterval(tInterval); isTRunning = false;
           tStartBtn.textContent = 'Iniciar';
-          tStartBtn.classList.remove('danger');
-          tStartBtn.classList.add('primary');
-          playAlarm();
-          alert('¡Tiempo terminado!');
+          tStartBtn.classList.remove('danger'); tStartBtn.classList.add('primary');
+          
+          // Sonido de alarma
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const osc = audioCtx.createOscillator();
+          osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+          osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+          
+          setTimeout(() => alert('¡Tiempo terminado!'), 100);
         }
       }, 1000);
     }
@@ -295,35 +291,13 @@
   };
 
   tResetBtn.onclick = () => {
-    clearInterval(tInterval);
-    isTRunning = false;
+    clearInterval(tInterval); isTRunning = false;
     const m = parseInt(tMinInput.value) || 0;
     const s = parseInt(tSecInput.value) || 0;
     tRemaining = (m * 60) + s;
     updateTimerDisplay();
     tStartBtn.textContent = 'Iniciar';
-    tStartBtn.classList.remove('danger');
-    tStartBtn.classList.add('primary');
-  };
-
-  // Sonido de alarma simple con Web Audio API
-  const playAlarm = () => {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioCtx.createOscillator();
-    const gainNode = audioCtx.createGain();
-    
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Nota A5
-    oscillator.connect(gainNode);
-    gainNode.connect(audioCtx.destination);
-    
-    // Hacer un pitido intermitente
-    gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 0.1);
-    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
-    
-    oscillator.start();
-    oscillator.stop(audioCtx.currentTime + 0.5);
+    tStartBtn.classList.remove('danger'); tStartBtn.classList.add('primary');
   };
 
   updateTimerDisplay();
