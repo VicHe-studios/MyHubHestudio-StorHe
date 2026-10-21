@@ -1,0 +1,8 @@
+{
+  "id": "hevento",
+  "titulo": "He-vento",
+  "icono": "calendar",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Un calendario mensual con eventos"
+}
