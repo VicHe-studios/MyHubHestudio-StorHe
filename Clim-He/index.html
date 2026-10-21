@@ -90,9 +90,29 @@
   /* Por Horas */
   .hourly-forecast {
     display: flex; gap: 12px; overflow-x: auto;
-    padding-bottom: 8px; scrollbar-width: none;
+    padding-bottom: 12px; /* Un poco más de padding para la barra */
+    
+    /* Estilos de la barra de scroll */
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
   }
-  .hourly-forecast::-webkit-scrollbar { display: none; }
+  
+  /* Webkit (Chrome, Edge, Safari) */
+  .hourly-forecast::-webkit-scrollbar {
+    height: 6px;
+    display: block;
+  }
+  .hourly-forecast::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .hourly-forecast::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: 4px;
+  }
+  .hourly-forecast::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+
   .hourly-item {
     display: flex; flex-direction: column; align-items: center; gap: 8px;
     background: var(--field); border: 1px solid var(--line);
@@ -137,8 +157,9 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  /* Scrollbar global para el contenido principal */
+  .content::-webkit-scrollbar { width: 6px; }
+  .content::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -213,13 +234,11 @@
       const current = data.current_weather;
       const currentInfo = getWeatherInfo(current.weathercode);
 
-      // Encontrar la hora actual para las previsiones por hora
       const now = new Date();
       const currentHourStr = now.toISOString().slice(0, 13) + ':00';
       let startIndex = data.hourly.time.findIndex(t => t >= currentHourStr);
       if (startIndex === -1) startIndex = 0;
 
-      // Renderizar HTML
       let html = `
         <div class="current-weather">
           <div class="current-location">
@@ -236,7 +255,6 @@
           <div class="hourly-forecast">
       `;
 
-      // Previsión por horas (siguientes 24 horas)
       for (let i = startIndex; i < startIndex + 24; i++) {
         if (!data.hourly.time[i]) break;
         const time = new Date(data.hourly.time[i]);
@@ -262,7 +280,6 @@
           <div class="daily-forecast">
       `;
 
-      // Previsión por días (7 días)
       for (let i = 0; i < 7; i++) {
         if (!data.daily.time[i]) break;
         const dayName = getDayName(data.daily.time[i]);
@@ -297,14 +314,13 @@
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Mi Ubicación'),
-        () => fetchWeather(-33.45, -70.66, 'Santiago, Chile') // Fallback si deniega el GPS
+        () => fetchWeather(-33.45, -70.66, 'Santiago, Chile')
       );
     } else {
       fetchWeather(-33.45, -70.66, 'Santiago, Chile');
     }
   };
 
-  // Buscador de ciudades (Usa Geocoding API de Open-Meteo)
   document.getElementById('btn-search').onclick = async () => {
     const query = searchInput.value.trim();
     if (!query) return;
@@ -330,7 +346,6 @@
     if (e.key === 'Enter') document.getElementById('btn-search').click();
   });
 
-  // Iniciar obteniendo la ubicación del usuario
   getLocation();
 </script>
 </body>
