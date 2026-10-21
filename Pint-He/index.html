@@ -12,7 +12,7 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
-    --canvas-bg: #ffffff; /* Fondo del lienzo en modo claro */
+    --canvas-bg: #ffffff;
   }
   
   html[data-modo="oscuro"] {
@@ -21,7 +21,7 @@
     --line: rgba(255, 255, 255, 0.09);
     --card: #222227;
     --field: #2a2a31;
-    --canvas-bg: #1a1a1f; /* Fondo del lienzo en modo oscuro */
+    --canvas-bg: #1a1a1f;
   }
 
   * { box-sizing: border-box; }
@@ -32,44 +32,59 @@
     overflow: hidden;
   }
 
+  /* Barra de herramientas más compacta */
   .toolbar {
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 16px; border-bottom: 1px solid var(--line);
-    background: var(--card); flex-wrap: wrap; flex-shrink: 0;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+    overflow-x: auto; /* Por si la ventana es muy angosta */
   }
   
-  .tool-group { display: flex; align-items: center; gap: 6px; }
+  .tool-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .divider { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex-shrink: 0; }
 
-  input[type="color"] {
-    width: 32px; height: 32px; padding: 0; border: none;
-    border-radius: 8px; cursor: pointer; background: transparent;
+  /* Paleta de colores de MyHub */
+  .palette { display: flex; gap: 6px; }
+  .swatch {
+    width: 24px; height: 24px; border-radius: 6px; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.15s;
   }
-  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-  input[type="color"]::-webkit-color-swatch { border: 2px solid var(--line); border-radius: 8px; }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.active { border-color: var(--text); box-shadow: 0 0 0 1px var(--card) inset; }
+  
+  /* Colores fijos */
+  .c-blue { background: #2563eb; }
+  .c-sky { background: #0ea5e9; }
+  .c-red { background: #dc2626; }
+  .c-green { background: #16a34a; }
+  .c-purple { background: #7c3aed; }
+  .c-yellow { background: #ca8a04; }
+  .c-black { background: #0b1220; }
+  .c-white { background: #ffffff; border-color: var(--line); }
 
-  input[type="range"] { width: 80px; accent-color: var(--accent); }
+  input[type="range"] { width: 60px; accent-color: var(--accent); }
 
   .btn-tool {
     background: var(--field); border: 1px solid var(--line); color: var(--text);
-    width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+    width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.2s; flex-shrink: 0;
   }
   .btn-tool:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
   .btn-tool.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .btn-tool:disabled { opacity: 0.4; cursor: not-allowed; }
-  .btn-tool svg { width: 16px; height: 16px; }
+  .btn-tool svg { width: 14px; height: 14px; }
 
-  .btn-text { width: auto; padding: 0 12px; font-weight: 600; font-size: 12px; gap: 6px; }
+  .btn-text { width: auto; padding: 0 10px; font-weight: 600; font-size: 12px; gap: 6px; }
 
   .canvas-container {
     flex: 1; display: flex; align-items: center; justify-content: center;
-    background: var(--field); padding: 16px; overflow: hidden;
+    background: var(--field); padding: 12px; overflow: hidden;
   }
   
   canvas {
-    background: var(--canvas-bg); /* Color adaptado al tema */
-    border-radius: 8px;
+    background: var(--canvas-bg);
+    border-radius: 6px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     cursor: crosshair;
     touch-action: none;
@@ -77,7 +92,7 @@
   }
 
   .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
+    text-align: center; font-size: 11px; color: var(--muted); padding: 6px;
     background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0;
   }
 </style>
@@ -94,28 +109,41 @@
       </button>
     </div>
 
+    <div class="divider"></div>
+
     <div class="tool-group">
-      <button class="btn-tool" id="btn-undo" title="Deshacer" disabled>
+      <button class="btn-tool" id="btn-undo" title="Deshacer (Ctrl+Z)" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path></svg>
       </button>
-      <button class="btn-tool" id="btn-redo" title="Rehacer" disabled>
+      <button class="btn-tool" id="btn-redo" title="Rehacer (Ctrl+Y)" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path></svg>
       </button>
     </div>
 
+    <div class="divider"></div>
+
+    <!-- Paleta de colores fija del S.O. -->
+    <div class="tool-group palette">
+      <div class="swatch c-black" data-color="#0b1220" title="Negro"></div>
+      <div class="swatch c-white" data-color="#ffffff" title="Blanco"></div>
+      <div class="swatch c-blue active" data-color="#2563eb" title="Azul"></div>
+      <div class="swatch c-sky" data-color="#0ea5e9" title="Celeste"></div>
+      <div class="swatch c-red" data-color="#dc2626" title="Rojo"></div>
+      <div class="swatch c-green" data-color="#16a34a" title="Verde"></div>
+      <div class="swatch c-purple" data-color="#7c3aed" title="Morado"></div>
+      <div class="swatch c-yellow" data-color="#ca8a04" title="Amarillo"></div>
+    </div>
+
     <div class="tool-group">
-      <input type="color" id="color-picker" value="#2563eb" title="Color">
       <input type="range" id="size-picker" min="1" max="30" value="4" title="Grosor">
     </div>
 
     <div class="tool-group" style="margin-left: auto;">
       <button class="btn-tool btn-text" id="btn-clear" title="Limpiar todo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-        Limpiar
       </button>
       <button class="btn-tool btn-text" id="btn-save" title="Descargar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        Guardar
       </button>
     </div>
   </div>
@@ -147,18 +175,15 @@
   let currentColor = '#2563eb';
   let currentSize = 4;
 
-  // Sistema Undo / Redo
   let history = [];
   let historyIndex = -1;
   const btnUndo = document.getElementById('btn-undo');
   const btnRedo = document.getElementById('btn-redo');
 
   const saveState = () => {
-    // Si hicimos undo y luego dibujamos, borramos el futuro del historial
     if (historyIndex < history.length - 1) {
       history = history.slice(0, historyIndex + 1);
     }
-    // Guardar el estado actual (ImageData es eficiente para canvas)
     history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
     historyIndex++;
     updateButtons();
@@ -178,8 +203,8 @@
     }
 
     const rect = container.getBoundingClientRect();
-    canvas.width = rect.width - 32;
-    canvas.height = rect.height - 32;
+    canvas.width = rect.width - 24;
+    canvas.height = rect.height - 24;
 
     if (tempCanvas.width > 0) {
       ctx.drawImage(tempCanvas, 0, 0);
@@ -188,10 +213,12 @@
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     
-    // Al redimensionar, reiniciamos el historial para evitar bugs
-    history = [];
-    historyIndex = -1;
-    saveState();
+    // Evitar reiniciar el historial si no hubo un cambio de tamaño real
+    if (tempCanvas.width !== canvas.width || tempCanvas.height !== canvas.height) {
+      history = [];
+      historyIndex = -1;
+      saveState();
+    }
   };
 
   window.addEventListener('resize', resizeCanvas);
@@ -204,7 +231,6 @@
 
   const draw = (e) => {
     if (!isDrawing) return;
-    
     const rect = canvas.getBoundingClientRect();
     let x, y;
     
@@ -218,7 +244,6 @@
 
     ctx.lineWidth = currentSize;
     
-    // Lógica del borrador: destination-out borra el canvas mostrando el fondo real
     if (currentTool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
       ctx.strokeStyle = 'rgba(0,0,0,1)';
@@ -237,7 +262,7 @@
     if (!isDrawing) return;
     isDrawing = false;
     ctx.beginPath();
-    saveState(); // Guardar en el historial al soltar el ratón
+    saveState();
   };
 
   canvas.addEventListener('mousedown', startDrawing);
@@ -248,11 +273,15 @@
   canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
   canvas.addEventListener('touchend', stopDrawing);
 
-  // Controles
-  document.getElementById('color-picker').oninput = (e) => {
-    currentColor = e.target.value;
-    document.getElementById('tool-pencil').click();
-  };
+  // Selección de color desde la paleta
+  document.querySelectorAll('.swatch').forEach(sw => {
+    sw.onclick = () => {
+      document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+      sw.classList.add('active');
+      currentColor = sw.dataset.color;
+      document.getElementById('tool-pencil').click(); // Cambia a pincel
+    };
+  });
 
   document.getElementById('size-picker').oninput = (e) => { currentSize = e.target.value; };
 
@@ -268,7 +297,7 @@
     document.getElementById('tool-pencil').classList.remove('active');
   };
 
-  btnUndo.onclick = () => {
+  const doUndo = () => {
     if (historyIndex > 0) {
       historyIndex--;
       ctx.putImageData(history[historyIndex], 0, 0);
@@ -276,13 +305,31 @@
     }
   };
 
-  btnRedo.onclick = () => {
+  const doRedo = () => {
     if (historyIndex < history.length - 1) {
       historyIndex++;
       ctx.putImageData(history[historyIndex], 0, 0);
       updateButtons();
     }
   };
+
+  btnUndo.onclick = doUndo;
+  btnRedo.onclick = doRedo;
+
+  // ATAJOS DE TECLADO (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
+  window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) doRedo();
+        else doUndo();
+      }
+      if (e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        doRedo();
+      }
+    }
+  });
 
   document.getElementById('btn-clear').onclick = () => {
     if(confirm('¿Seguro que quieres borrar todo el dibujo?')) {
@@ -292,18 +339,14 @@
   };
 
   document.getElementById('btn-save').onclick = () => {
-    // Si el canvas es transparente y el fondo del tema es oscuro, al guardar se verá transparente.
-    // Para solucionarlo, creamos un canvas temporal con fondo blanco/oscuro para exportar.
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = canvas.width;
     exportCanvas.height = canvas.height;
     const exportCtx = exportCanvas.getContext('2d');
     
-    // Fondo blanco o negro según el modo
     const isDark = document.documentElement.dataset.modo === 'oscuro';
     exportCtx.fillStyle = isDark ? '#1a1a1f' : '#ffffff';
     exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    
     exportCtx.drawImage(canvas, 0, 0);
     
     const link = document.createElement('a');
