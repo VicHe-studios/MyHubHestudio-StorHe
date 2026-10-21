@@ -1,0 +1,8 @@
+{
+  "id": "he-loj",
+  "titulo": "HE-loj",
+  "icono": "clock",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Reloj, cronómetro y temporizador"
+}
