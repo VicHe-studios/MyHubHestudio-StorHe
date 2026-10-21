@@ -1,0 +1,8 @@
+{
+  "id": "clim-he",
+  "titulo": "Clim-He",
+  "icono": "cloud-sun",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "El clima actual, por horas y por días"
+}
