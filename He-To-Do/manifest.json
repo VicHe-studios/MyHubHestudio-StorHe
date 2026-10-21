@@ -1,0 +1,8 @@
+{
+  "id": "he-to-do",
+  "titulo": "He-To-Do",
+  "icono": "check-square",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Una lista de tareas rápida y minimalista"
+}
