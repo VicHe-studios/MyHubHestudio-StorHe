@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  }
+  
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+    overflow: hidden;
+  }
+
+  /* Cabecera de búsqueda */
+  .header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+  .header input {
+    flex: 1; padding: 10px 14px; border-radius: 10px;
+    border: 1.5px solid var(--line); background: var(--field); color: var(--text);
+    font-family: inherit; font-size: 14px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .header input:focus { border-color: var(--accent); }
+  .btn-search {
+    background: var(--accent); color: #fff; border: none;
+    width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s;
+  }
+  .btn-search:hover { transform: scale(1.05); }
+  .btn-search svg { width: 18px; height: 18px; }
+
+  /* Contenido principal */
+  .content {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 24px;
+  }
+
+  /* Clima Actual */
+  .current-weather {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; animation: fadeIn 0.5s ease-out;
+  }
+  .current-icon { color: var(--accent); margin-bottom: 8px; }
+  .current-icon svg { width: 80px; height: 80px; }
+  .current-temp {
+    font-size: 64px; font-weight: 800; line-height: 1;
+    letter-spacing: -2px; margin-bottom: 4px;
+  }
+  .current-desc {
+    font-size: 16px; font-weight: 600; color: var(--muted);
+    text-transform: capitalize;
+  }
+  .current-location {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 4px;
+  }
+  .current-location svg { width: 14px; height: 14px; }
+
+  /* Secciones */
+  .section-title {
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px; padding-left: 4px;
+  }
+
+  /* Por Horas */
+  .hourly-forecast {
+    display: flex; gap: 12px; overflow-x: auto;
+    padding-bottom: 8px; scrollbar-width: none;
+  }
+  .hourly-forecast::-webkit-scrollbar { display: none; }
+  .hourly-item {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    background: var(--field); border: 1px solid var(--line);
+    padding: 12px; border-radius: 12px; min-width: 72px;
+    flex-shrink: 0; transition: border-color 0.2s;
+  }
+  .hourly-item:hover { border-color: var(--accent-soft); }
+  .hourly-time { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .hourly-icon { color: var(--accent); }
+  .hourly-icon svg { width: 24px; height: 24px; }
+  .hourly-temp { font-size: 15px; font-weight: 700; }
+
+  /* Por Días */
+  .daily-forecast {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .daily-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--field); border: 1px solid var(--line);
+    padding: 12px 16px; border-radius: 12px;
+    transition: border-color 0.2s;
+  }
+  .daily-item:hover { border-color: var(--accent-soft); }
+  .daily-day { font-size: 14px; font-weight: 600; flex: 1; }
+  .daily-icon { color: var(--accent); margin-right: 16px; }
+  .daily-icon svg { width: 22px; height: 22px; }
+  .daily-temps { font-size: 14px; font-weight: 600; display: flex; gap: 12px; width: 80px; justify-content: flex-end; }
+  .daily-max { color: var(--text); }
+  .daily-min { color: var(--muted); }
+
+  /* Cargando */
+  .loader {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--muted); gap: 16px;
+  }
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--line);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <input type="text" id="search-input" placeholder="Buscar ciudad..." autocomplete="off">
+    <button class="btn-search" id="btn-search" title="Buscar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    </button>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loader">
+      <div class="spinner"></div>
+      <span>Obteniendo clima...</span>
+    </div>
+  </div>
+
+<script>
+  // Sincronización de Tema con MyHub
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  const contentEl = document.getElementById('content');
+  const searchInput = document.getElementById('search-input');
+  
+  // Mapeo de códigos meteorológicos WMO a iconos de Lucide
+  const getWeatherInfo = (code) => {
+    if (code === 0) return { icon: 'sun', label: 'Despejado' };
+    if (code === 1 || code === 2) return { icon: 'cloud-sun', label: 'Parcialmente nublado' };
+    if (code === 3) return { icon: 'cloud', label: 'Nublado' };
+    if (code === 45 || code === 48) return { icon: 'cloud-fog', label: 'Niebla' };
+    if (code >= 51 && code <= 55) return { icon: 'cloud-drizzle', label: 'Llovizna' };
+    if (code >= 61 && code <= 65) return { icon: 'cloud-rain', label: 'Lluvia' };
+    if (code >= 71 && code <= 75) return { icon: 'snowflake', label: 'Nieve' };
+    if (code >= 80 && code <= 82) return { icon: 'cloud-rain-wind', label: 'Chubascos' };
+    if (code >= 95 && code <= 99) return { icon: 'cloud-lightning', label: 'Tormenta' };
+    return { icon: 'cloud', label: 'Desconocido' };
+  };
+
+  const getDayName = (dateString) => {
+    const date = new Date(dateString + 'T00:00:00');
+    const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const today = new Date();
+    
+    if (date.getDate() === today.getDate() && date.getMonth() === today.getMonth()) {
+      return 'Hoy';
+    }
+    return days[date.getDay()];
+  };
+
+  const fetchWeather = async (lat, lon, locationName) => {
+    contentEl.innerHTML = `
+      <div class="loader">
+        <div class="spinner"></div>
+        <span>Cargando clima...</span>
+      </div>`;
+
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (!data.current_weather) throw new Error('No hay datos');
+
+      const current = data.current_weather;
+      const currentInfo = getWeatherInfo(current.weathercode);
+
+      // Encontrar la hora actual para las previsiones por hora
+      const now = new Date();
+      const currentHourStr = now.toISOString().slice(0, 13) + ':00';
+      let startIndex = data.hourly.time.findIndex(t => t >= currentHourStr);
+      if (startIndex === -1) startIndex = 0;
+
+      // Renderizar HTML
+      let html = `
+        <div class="current-weather">
+          <div class="current-location">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            ${locationName}
+          </div>
+          <div class="current-icon"><i data-lucide="${currentInfo.icon}"></i></div>
+          <div class="current-temp">${Math.round(current.temperature)}°</div>
+          <div class="current-desc">${currentInfo.label}</div>
+        </div>
+
+        <div>
+          <div class="section-title">Próximas horas</div>
+          <div class="hourly-forecast">
+      `;
+
+      // Previsión por horas (siguientes 24 horas)
+      for (let i = startIndex; i < startIndex + 24; i++) {
+        if (!data.hourly.time[i]) break;
+        const time = new Date(data.hourly.time[i]);
+        const hourStr = time.toLocaleTimeString('es', { hour: '2-digit', hour12: false });
+        const temp = Math.round(data.hourly.temperature_2m[i]);
+        const info = getWeatherInfo(data.hourly.weather_code[i]);
+        
+        html += `
+          <div class="hourly-item">
+            <span class="hourly-time">${hourStr}</span>
+            <div class="hourly-icon"><i data-lucide="${info.icon}"></i></div>
+            <span class="hourly-temp">${temp}°</span>
+          </div>
+        `;
+      }
+
+      html += `
+          </div>
+        </div>
+        
+        <div>
+          <div class="section-title">Próximos 7 días</div>
+          <div class="daily-forecast">
+      `;
+
+      // Previsión por días (7 días)
+      for (let i = 0; i < 7; i++) {
+        if (!data.daily.time[i]) break;
+        const dayName = getDayName(data.daily.time[i]);
+        const maxTemp = Math.round(data.daily.temperature_2m_max[i]);
+        const minTemp = Math.round(data.daily.temperature_2m_min[i]);
+        const info = getWeatherInfo(data.daily.weather_code[i]);
+
+        html += `
+          <div class="daily-item">
+            <span class="daily-day">${dayName}</span>
+            <div class="daily-icon"><i data-lucide="${info.icon}"></i></div>
+            <div class="daily-temps">
+              <span class="daily-max">${maxTemp}°</span>
+              <span class="daily-min">${minTemp}°</span>
+            </div>
+          </div>
+        `;
+      }
+
+      html += `</div></div>`;
+      contentEl.innerHTML = html;
+      
+      if (window.lucide) lucide.createIcons();
+
+    } catch (err) {
+      console.error(err);
+      contentEl.innerHTML = `<div class="loader" style="color: #ef4444;">Error al cargar el clima.<br><small>Verifica tu conexión.</small></div>`;
+    }
+  };
+
+  const getLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Mi Ubicación'),
+        () => fetchWeather(-33.45, -70.66, 'Santiago, Chile') // Fallback si deniega el GPS
+      );
+    } else {
+      fetchWeather(-33.45, -70.66, 'Santiago, Chile');
+    }
+  };
+
+  // Buscador de ciudades (Usa Geocoding API de Open-Meteo)
+  document.getElementById('btn-search').onclick = async () => {
+    const query = searchInput.value.trim();
+    if (!query) return;
+    
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=es&format=json`);
+      const data = await res.json();
+      
+      if (data.results && data.results.length > 0) {
+        const city = data.results[0];
+        const locationName = `${city.name}, ${city.country}`;
+        fetchWeather(city.latitude, city.longitude, locationName);
+        searchInput.value = '';
+      } else {
+        alert('No se encontró la ciudad.');
+      }
+    } catch (e) {
+      alert('Error buscando la ciudad.');
+    }
+  };
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('btn-search').click();
+  });
+
+  // Iniciar obteniendo la ubicación del usuario
+  getLocation();
+</script>
+</body>
+</html>
