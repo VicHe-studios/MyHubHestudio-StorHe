@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Librería para la lógica del ajedrez -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    /* Colores del tablero */
+    --board-light: #f0d9b5;
+    --board-dark: #b58863;
+    --board-highlight: rgba(37, 99, 235, 0.4);
+  }
+  
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+    --board-light: #a0a0a0;
+    --board-dark: #505050;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+    overflow: hidden;
+  }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card);
+  }
+  .turn-indicator {
+    font-size: 14px; font-weight: 700; color: var(--accent);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .turn-indicator span { font-size: 20px; }
+  .btn-reset {
+    background: var(--field); color: var(--text); border: 1px solid var(--line);
+    padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 600;
+    font-size: 12px; transition: 0.2s;
+  }
+  .btn-reset:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .board-container {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 16px; background: var(--field); overflow: auto;
+  }
+  
+  .board {
+    display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+    width: min(100%, 400px); aspect-ratio: 1;
+    border: 2px solid var(--line); border-radius: 8px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    user-select: none;
+  }
+  
+  .square {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px; cursor: pointer; position: relative;
+    transition: background 0.1s;
+  }
+  .square.light { background: var(--board-light); }
+  .square.dark { background: var(--board-dark); }
+  .square.selected { background: var(--board-highlight) !important; }
+  .square.valid-move::after {
+    content: ''; position: absolute; width: 12px; height: 12px;
+    background: rgba(0,0,0,0.2); border-radius: 50%;
+  }
+  .square.piece-white { color: #fff; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+  .square.piece-black { color: #000; text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
+  
+  .app-credit {
+    text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
+    border-top: 1px solid var(--line); background: var(--card);
+  }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="turn-indicator" id="turn-indicator"><span>♟️</span> Turno: Blancas</div>
+    <button class="btn-reset" id="btn-reset">Reiniciar</button>
+  </div>
+
+  <div class="board-container">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="app-credit">
+    Lógica de ajedrez por <a href="https://github.com/jhlywa/chess.js" target="_blank">chess.js</a>
+  </div>
+
+<script>
+  // Sincronización de Tema con MyHub
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+      document.documentElement.style.setProperty('--board-highlight', e.data.color + '66');
+    }
+  });
+
+  // Inicializar ajedrez
+  let game = new Chess();
+  let selectedSquare = null;
+  
+  const piecesMap = {
+    'p': '♟', 'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚',
+    'P': '♙', 'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔'
+  };
+
+  const boardEl = document.getElementById('board');
+  const turnIndicator = document.getElementById('turn-indicator');
+
+  const renderBoard = () => {
+    boardEl.innerHTML = '';
+    const boardState = game.board(); // Matriz 8x8
+
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        const squareEl = document.createElement('div');
+        const isLight = (row + col) % 2 === 0;
+        squareEl.className = `square ${isLight ? 'light' : 'dark'}`;
+        
+        const piece = boardState[row][col];
+        const file = String.fromCharCode(97 + col);
+        const rank = 8 - row;
+        const squareId = `${file}${rank}`;
+        
+        squareEl.dataset.square = squareId;
+
+        if (piece) {
+          squareEl.textContent = piecesMap[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
+          squareEl.classList.add(piece.color === 'w' ? 'piece-white' : 'piece-black');
+        }
+
+        if (selectedSquare === squareId) {
+          squareEl.classList.add('selected');
+        }
+
+        // Resaltar movimientos válidos si hay una pieza seleccionada
+        if (selectedSquare) {
+          const moves = game.moves({ square: selectedSquare, verbose: true });
+          if (moves.some(m => m.to === squareId)) {
+            squareEl.classList.add('valid-move');
+          }
+        }
+
+        squareEl.onclick = () => handleSquareClick(squareId);
+        boardEl.appendChild(squareEl);
+      }
+    }
+
+    // Actualizar indicador de turno
+    if (game.game_over()) {
+      turnIndicator.innerHTML = `<span>🏁</span> ¡Juego Terminado!`;
+    } else {
+      const isWhite = game.turn() === 'w';
+      turnIndicator.innerHTML = `<span>${isWhite ? '♙' : '♟'}</span> Turno: ${isWhite ? 'Blancas' : 'Negras'}`;
+    }
+  };
+
+  const handleSquareClick = (square) => {
+    // Si ya hay una pieza seleccionada y hacemos clic en otra casilla
+    if (selectedSquare) {
+      const move = game.move({
+        from: selectedSquare,
+        to: square,
+        promotion: 'q' // Siempre promocionar a Reina para simplificar
+      });
+
+      selectedSquare = null; // Deseleccionar
+
+      if (move === null) {
+        // Movimiento inválido, pero el usuario hizo clic en otra pieza
+        const piece = game.get(square);
+        if (piece && piece.color === game.turn()) {
+          selectedSquare = square; // Seleccionar la nueva pieza
+        }
+      }
+      renderBoard();
+    } else {
+      // Si no hay nada seleccionado, verificar si hay una pieza ahí
+      const piece = game.get(square);
+      if (piece && piece.color === game.turn()) {
+        selectedSquare = square;
+        renderBoard();
+      }
+    }
+  };
+
+  document.getElementById('btn-reset').onclick = () => {
+    game.reset();
+    selectedSquare = null;
+    renderBoard();
+  };
+
+  renderBoard();
+</script>
+</body>
+</html>
