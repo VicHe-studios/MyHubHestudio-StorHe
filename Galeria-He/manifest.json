@@ -4,5 +4,5 @@
   "icono": "image",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "Tu galería de imágenes local. Máximo 25MB."
+  "descripcion": "Tu galería local. Soporta SVG, PNG, JPG y GIF."
 }
