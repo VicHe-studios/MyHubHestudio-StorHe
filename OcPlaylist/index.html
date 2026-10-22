@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlists OC</title>
+<style>
+  /* ============================================================
+     PALETA CLARA (por defecto)
+     Usa var(--card) / var(--text) / var(--accent) por si MyHub
+     los inyecta en el iframe. Si no, cae a los fallbacks.
+     ============================================================ */
+  :root{
+    --bg:       var(--card,  #ffffff);
+    --fg:       var(--text,  #111827);
+    --line-c:   var(--line,  rgba(128,128,128,.22));
+    --field-c:  var(--field, rgba(128,128,128,.12));
+    --muted-c:  var(--muted, #6b7280);
+    --acc:      var(--accent,#2563eb);
+    --on-acc:   #ffffff;
+    --layer:    rgba(128,128,128,.07);
+    --layer-2:  rgba(128,128,128,.14);
+  }
+
+  /* ============================================================
+     PALETA OSCURA
+     MyHub inyecta data-modo="oscuro" en <html>. Aquí definimos
+     los colores que la app debe usar en modo oscuro.
+     ============================================================ */
+  html[data-modo="oscuro"]{
+    --bg:       var(--card,  #0f1115);
+    --fg:       var(--text,  #e8eaed);
+    --line-c:   var(--line,  rgba(255,255,255,.13));
+    --field-c:  var(--field, rgba(255,255,255,.06));
+    --muted-c:  var(--muted, #9aa1ac);
+    --layer:    rgba(255,255,255,.045);
+    --layer-2:  rgba(255,255,255,.09);
+  }
+
+  *{ box-sizing:border-box; }
+
+  html, body{
+    height:100vh; width:100%; margin:0; overflow:hidden;
+    background:var(--bg); color:var(--fg);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,sans-serif;
+    font-size:14px; line-height:1.4;
+    -webkit-font-smoothing:antialiased;
+    transition:background .18s ease, color .18s ease;
+  }
+  body{ display:flex; }
+
+  svg{ display:block; width:16px; height:16px; flex:0 0 auto; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:rgba(128,128,128,.35); border-radius:8px; }
+  ::-webkit-scrollbar-thumb:hover{ background:rgba(128,128,128,.55); }
+  ::-webkit-scrollbar-track{ background:transparent; }
+
+  .app{ flex:1; display:flex; flex-direction:column; min-height:0; min-width:0; }
+
+  .top{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 14px; border-bottom:1px solid var(--line-c); flex:0 0 auto;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .logo{
+    width:34px; height:34px; border-radius:10px; display:grid; place-items:center;
+    background:var(--acc); color:var(--on-acc); flex:0 0 auto;
+  }
+  .logo svg{ width:18px; height:18px; }
+  .btitle{ font-weight:700; font-size:15px; letter-spacing:-.01em; }
+  .bsub{ font-size:11px; color:var(--muted-c); }
+
+  .chars{
+    display:flex; gap:12px; padding:12px 14px; flex:0 0 auto;
+    overflow-x:auto; overflow-y:hidden;
+    border-bottom:1px solid var(--line-c);
+    scrollbar-width:thin;
+  }
+  .chars::-webkit-scrollbar{ height:6px; }
+
+  .char{
+    flex:0 0 auto; width:70px; display:flex; flex-direction:column;
+    align-items:center; gap:6px; background:none; border:0; padding:0;
+    cursor:pointer; color:inherit; font:inherit;
+  }
+  .char .av{
+    width:56px; height:56px; border-radius:50%; overflow:hidden; position:relative;
+    background:var(--layer-2); border:2px solid transparent;
+    display:grid; place-items:center; font-weight:700; font-size:19px;
+    color:var(--muted-c); transition:border-color .15s, transform .15s;
+  }
+  .char .av img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .char:hover .av{ transform:translateY(-2px); }
+  .char.active .av{ border-color:var(--acc); }
+  .char .cname{
+    font-size:11px; max-width:70px; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; color:var(--muted-c);
+  }
+  .char.active .cname{ color:var(--fg); font-weight:600; }
+  .char.add .av{ border:2px dashed var(--line-c); background:transparent; }
+  .char.add .av svg{ width:22px; height:22px; }
+
+  .panel{ flex:1 1 auto; overflow-y:auto; padding:14px; min-height:0; }
+
+  .chead{ display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .cav{
+    width:62px; height:62px; border-radius:16px; overflow:hidden; flex:0 0 auto;
+    background:var(--layer-2); border:1px solid var(--line-c);
+    display:grid; place-items:center; font-weight:700; font-size:22px; color:var(--muted-c);
+  }
+  .cav img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .cinfo{ min-width:0; flex:1; }
+  .cinfo h2{
+    margin:0; font-size:17px; font-weight:700;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .small{ font-size:12px; }
+  .cactions{ display:flex; gap:2px; flex:0 0 auto; }
+
+  .toolbar{ display:flex; gap:8px; margin-bottom:12px; align-items:center; }
+  .searchbox{
+    flex:1; display:flex; align-items:center; gap:6px; min-width:0;
+    background:var(--field-c); border:1px solid var(--line-c);
+    border-radius:10px; padding:0 10px;
+  }
+  .searchbox svg{ width:15px; height:15px; color:var(--muted-c); }
+  .searchbox input{
+    flex:1; background:none; border:0; outline:none; color:inherit;
+    font:inherit; padding:8px 0; min-width:0;
+  }
+  .searchbox input::placeholder{ color:var(--muted-c); }
+
+  .songs{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .song{
+    display:flex; align-items:center; gap:10px; padding:8px;
+    border-radius:12px; background:var(--layer); border:1px solid var(--line-c);
+    transition:background .12s;
+  }
+  .song:hover{ background:var(--layer-2); }
+
+  .thumb{
+    width:44px; height:44px; border-radius:9px; flex:0 0 auto; position:relative;
+    overflow:hidden; background:var(--layer-2); color:var(--muted-c);
+    display:grid; place-items:center;
+  }
+  .thumb svg{ width:18px; height:18px; }
+  .thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+
+  .smeta{ flex:1; min-width:0; }
+  .sname{
+    font-weight:600; font-size:13px; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;
+  }
+  .sartist{
+    font-size:11.5px; color:var(--muted-c); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap;
+  }
+
+  .play{
+    width:32px; height:32px; border-radius:50%; flex:0 0 auto;
+    display:grid; place-items:center; background:var(--acc); color:var(--on-acc);
+    text-decoration:none; transition:transform .12s, filter .12s;
+  }
+  .play:hover{ transform:scale(1.09); filter:brightness(1.1); }
+  .play svg{ width:14px; height:14px; margin-left:1px; }
+
+  .icon-btn{
+    width:30px; height:30px; border-radius:8px; border:1px solid transparent;
+    background:transparent; color:var(--muted-c); display:grid; place-items:center;
+    cursor:pointer; flex:0 0 auto; padding:0;
+    transition:background .12s, color .12s;
+  }
+  .icon-btn:hover{ background:var(--layer-2); color:var(--fg); }
+  .icon-btn.danger:hover{ color:#e5484d; background:rgba(229,72,77,.13); }
+  .icon-btn svg{ width:15px; height:15px; }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:8px 12px; border-radius:10px; border:1px solid var(--line-c);
+    background:transparent; color:inherit; font:inherit; font-size:13px;
+    font-weight:600; cursor:pointer; white-space:nowrap;
+    transition:background .12s, border-color .12s, filter .12s;
+  }
+  .btn:hover{ background:var(--layer-2); }
+  .btn svg{ width:15px; height:15px; }
+  .btn.primary{ background:var(--acc); border-color:transparent; color:var(--on-acc); }
+  .btn.primary:hover{ background:var(--acc); filter:brightness(1.09); }
+
+  .lbl{
+    display:block; font-size:12px; font-weight:600;
+    color:var(--muted-c); margin:12px 0 6px;
+  }
+  .inp{
+    width:100%; padding:9px 11px; border-radius:10px;
+    border:1px solid var(--line-c); background:var(--field-c);
+    color:inherit; font:inherit; outline:none;
+    transition:border-color .12s, box-shadow .12s;
+  }
+  .inp::placeholder{ color:var(--muted-c); }
+  .inp:focus{
+    border-color:var(--acc);
+    box-shadow:0 0 0 3px rgba(128,128,128,.20);
+  }
+  .err{ color:#e5484d; font-size:12px; margin:8px 0 0; }
+  .hint{ font-size:11px; color:var(--muted-c); margin:4px 0 0; width:100%; }
+
+  .photorow{ display:flex; gap:12px; align-items:center; margin-top:14px; }
+  .photoPrev{
+    width:76px; height:76px; border-radius:16px; overflow:hidden; flex:0 0 auto;
+    background:var(--field-c); border:1px solid var(--line-c);
+    display:grid; place-items:center; color:var(--muted-c);
+  }
+  .photoPrev img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .photoPrev svg{ width:26px; height:26px; }
+  .photobtns{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+
+  .overlay{
+    position:fixed; inset:0; z-index:50; padding:16px;
+    display:grid; place-items:center;
+    background:rgba(0,0,0,.5);
+    animation:fade .15s ease;
+  }
+  .overlay[hidden]{ display:none !important; }
+  @keyframes fade{ from{opacity:0} to{opacity:1} }
+
+  .modal{
+    width:100%; max-width:430px; max-height:88vh; overflow-y:auto;
+    background:var(--bg); border:1px solid var(--line-c);
+    border-radius:16px; box-shadow:0 24px 70px rgba(0,0,0,.4);
+    animation:pop .18s ease;
+  }
+  @keyframes pop{ from{transform:scale(.96); opacity:0} to{transform:scale(1); opacity:1} }
+
+  .mhead{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding:14px 16px 0;
+  }
+  .mhead h3{ margin:0; font-size:15px; font-weight:700; }
+  .mbody{ padding:4px 16px 16px; }
+  .mfoot{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+
+  .empty{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:8px; padding:40px 20px; color:var(--muted-c);
+  }
+  .empty h2{ margin:6px 0 0; font-size:16px; color:var(--fg); }
+  .empty p{ margin:0; font-size:13px; max-width:290px; }
+  .empty .btn{ margin-top:10px; }
+  .empty-ic{
+    width:64px; height:64px; border-radius:20px; display:grid; place-items:center;
+    background:var(--layer-2); color:var(--muted-c);
+  }
+  .empty-ic svg{ width:30px; height:30px; }
+  .empty.small{ padding:26px 16px; }
+  .empty.small .empty-ic{ width:52px; height:52px; border-radius:16px; }
+  .empty.small .empty-ic svg{ width:24px; height:24px; }
+
+  .muted{ color:var(--muted-c); }
+  .center{ text-align:center; }
+  .pad{ padding:26px 0; }
+
+  .snack{
+    position:fixed; left:50%; bottom:18px; z-index:80;
+    transform:translate(-50%,16px);
+    display:flex; align-items:center; gap:10px;
+    max-width:calc(100% - 28px);
+    padding:10px 13px; border-radius:12px;
+    background:#111418; color:#fff; font-size:12.5px;
+    box-shadow:0 10px 32px rgba(0,0,0,.4);
+    opacity:0; transition:opacity .2s, transform .2s;
+  }
+  html[data-modo="oscuro"] .snack{ background:#f5f6f8; color:#111418; }
+  .snack[hidden]{ display:none !important; }
+  .snack.show{ opacity:1; transform:translate(-50%,0); }
+  .snack-btn{
+    background:none; border:0; padding:0; font:inherit; font-weight:700;
+    color:#6ea8fe; cursor:pointer; white-space:nowrap;
+  }
+  html[data-modo="oscuro"] .snack-btn{ color:#2563eb; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+        </svg>
+      </span>
+      <div>
+        <div class="btitle">OC Playlists</div>
+        <div class="bsub" id="subtitle">Sin personajes</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="chars" id="charsBar"></div>
+  <main class="panel" id="panel"></main>
+</div>
+
+<div class="snack" id="snack" hidden></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="mhead">
+      <h3 id="mtitle">Título</h3>
+      <button class="icon-btn" id="mclose" title="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="mbody" id="mbody"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   APLICAR TEMA LO ANTES POSIBLE
+   ================================================================ */
+(function initTema(){
+  function normalizarModo(v){
+    v = String(v || '').toLowerCase();
+    if (v === 'oscuro' || v === 'dark') return 'oscuro';
+    if (v === 'claro'  || v === 'light') return 'claro';
+    return null;
+  }
+
+  function parseColor(str){
+    str = String(str || '').trim();
+    let m = /^#([0-9a-f]{3})$/i.exec(str);
+    if (m) { const h = m[1]; return { r: parseInt(h[0]+h[0],16), g: parseInt(h[1]+h[1],16), b: parseInt(h[2]+h[2],16) }; }
+    m = /^#([0-9a-f]{6})$/i.exec(str);
+    if (m) { const h = m[1]; return { r: parseInt(h.slice(0,2),16), g: parseInt(h.slice(2,4),16), b: parseInt(h.slice(4,6),16) }; }
+    m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(str);
+    if (m) return { r:+m[1], g:+m[2], b:+m[3] };
+    return null;
+  }
+  function aplicarColorAcento(color){
+    const c = parseColor(color);
+    if (!c) return;
+    const lum = (0.299*c.r + 0.587*c.g + 0.114*c.b) / 255;
+    document.documentElement.style.setProperty('--on-acc', lum > 0.62 ? '#111111' : '#ffffff');
+  }
+
+  window.addEventListener('message', (e) => {
+    const d = e.data;
+    if (!d || typeof d !== 'object') return;
+    if (d.type !== 'myhub:tema:res') return;
+
+    const root = document.documentElement;
+    const modo = normalizarModo(d.modo);
+    if (modo) root.setAttribute('data-modo', modo);
+
+    if (d.color) {
+      root.style.setProperty('--accent', d.color);
+      aplicarColorAcento(d.color);
+    }
+  });
+
+  try { window.parent.postMessage({ type: 'myhub:get-tema' }, '*'); } catch(e){}
+
+  setTimeout(() => {
+    try { window.parent.postMessage({ type: 'myhub:get-tema' }, '*'); } catch(e){}
+  }, 500);
+})();
+
+/* ================================================================
+   RESTO DE LA APP
+   ================================================================ */
+
+const I = {
+  plus:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  play:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  edit:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>',
+  music: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+  image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
+};
+
+const $ = (sel) => document.querySelector(sel);
+const esc = (s = '') => String(s).replace(/[&<>"']/g, m =>
+  ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
+const uid = (p = 'x') => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+const LS_KEY = 'myhub.ocplaylists.v1';
+let state = { chars: [], selected: null };
+let filtro = '';
+let avisoGuardado = false;
+
+function cargar() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      if (d && Array.isArray(d.chars)) state.chars = sanear({ chars: d.chars });
+      if (d && typeof d.selected === 'string') state.selected = d.selected;
+    }
+  } catch (e) { console.warn('No se pudo cargar:', e); }
+  if (!state.chars.some(c => c.id === state.selected)) {
+    state.selected = state.chars[0] ? state.chars[0].id : null;
+  }
+}
+
+function guardar() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({ chars: state.chars, selected: state.selected }));
+  } catch (e) {
+    if (!avisoGuardado) {
+      avisoGuardado = true;
+      toast('⚠️ No se pudo guardar.');
+    }
+  }
+}
+
+function actual() {
+  return state.chars.find(c => c.id === state.selected) || null;
+}
+
+function iniciales(nombre) {
+  const t = String(nombre || '').trim();
+  if (!t) return '?';
+  const p = t.split(/\s+/);
+  return (p.length > 1 ? p[0][0] + p[1][0] : t.slice(0, 2)).toUpperCase();
+}
+
+function parseYouTube(input) {
+  if (!input) return null;
+  let url = String(input).trim();
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  let u;
+  try { u = new URL(url); } catch (e) { return null; }
+
+  const host = u.hostname.replace(/^www\./i, '').toLowerCase();
+  const ok = /^[A-Za-z0-9_-]{11}$/;
+
+  if (host === 'youtu.be') {
+    const id = u.pathname.split('/').filter(Boolean)[0];
+    return id && ok.test(id) ? id : null;
+  }
+  if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+    const v = u.searchParams.get('v');
+    if (v) return ok.test(v) ? v : null;
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (['shorts', 'embed', 'live', 'v'].includes(parts[0])) {
+      const id = parts[1];
+      return id && ok.test(id) ? id : null;
+    }
+  }
+  return null;
+}
+
+function reducirImagen(file) {
+  return new Promise((resolve, reject) => {
+    if (file.size > 12 * 1024 * 1024) {
+      return reject(new Error('La imagen es demasiado grande (máx. 12 MB).'));
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Archivo de imagen inválido.'));
+      img.onload = () => {
+        const MAX = 320;
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        const escala = Math.min(1, MAX / Math.max(w, h));
+        w = Math.max(1, Math.round(w * escala));
+        h = Math.max(1, Math.round(h * escala));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function sanear(data) {
+  if (!data || !Array.isArray(data.chars)) throw new Error('Formato inválido: falta "chars".');
+  return data.chars.map(c => {
+    const canciones = Array.isArray(c.canciones) ? c.canciones.map(s => {
+      const vid = (typeof s.videoId === 'string' && s.videoId) || parseYouTube(s.url) || '';
+      return {
+        id: String(s.id || uid('s')),
+        titulo: String(s.titulo || '').slice(0, 120),
+        artista: String(s.artista || '').slice(0, 80),
+        url: vid ? 'https://www.youtube.com/watch?v=' + vid : String(s.url || ''),
+        videoId: vid
+      };
+    }).filter(s => s.titulo) : [];
+
+    return {
+      id: String(c.id || uid('c')),
+      nombre: String(c.nombre || 'Sin nombre').slice(0, 60),
+      foto: (typeof c.foto === 'string' && c.foto.startsWith('data:image')) ? c.foto : null,
+      canciones
+    };
+  });
+}
+
+function render() {
+  if (!state.chars.some(c => c.id === state.selected)) {
+    state.selected = state.chars.length ? state.chars[0].id : null;
+  }
+  const n = state.chars.length;
+  $('#subtitle').textContent = n === 0 ? 'Sin personajes' : n === 1 ? '1 personaje' : n + ' personajes';
+  renderChars();
+  renderPanel();
+}
+
+function renderChars() {
+  const bar = $('#charsBar');
+  let html = state.chars.map(c => `
+    <button class="char ${c.id === state.selected ? 'active' : ''}" data-char="${esc(c.id)}" title="${esc(c.nombre)}">
+      <span class="av">${c.foto
+        ? `<img src="${esc(c.foto)}" alt="">`
+        : `<span>${esc(iniciales(c.nombre))}</span>`}</span>
+      <span class="cname">${esc(c.nombre)}</span>
+    </button>`).join('');
+
+  html += `
+    <button class="char add" data-act="nuevo-char" title="Nuevo personaje">
+      <span class="av">${I.plus}</span>
+      <span class="cname">Añadir</span>
+    </button>`;
+
+  bar.innerHTML = html;
+}
+
+function renderPanel() {
+  const panel = $('#panel');
+  const c = actual();
+
+  if (!state.chars.length) {
+    panel.innerHTML = `
+      <div class="empty">
+        <div class="empty-ic">${I.music}</div>
+        <h2>Tu galería está vacía</h2>
+        <p>Crea tu primer personaje para empezar a armar su playlist musical.</p>
+        <button class="btn primary" data-act="nuevo-char">${I.plus} Crear personaje</button>
+      </div>`;
+    return;
+  }
+
+  if (!c) { panel.innerHTML = ''; return; }
+
+  panel.innerHTML = `
+    <div class="chead">
+      <div class="cav">${c.foto
+        ? `<img src="${esc(c.foto)}" alt="">`
+        : `<span>${esc(iniciales(c.nombre))}</span>`}</div>
+      <div class="cinfo">
+        <h2>${esc(c.nombre)}</h2>
+        <div class="muted small">${c.canciones.length} canción${c.canciones.length === 1 ? '' : 'es'}</div>
+      </div>
+      <div class="cactions">
+        <button class="icon-btn" data-act="edit-char" title="Editar personaje">${I.edit}</button>
+        <button class="icon-btn danger" data-act="del-char" title="Eliminar personaje">${I.trash}</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="searchbox">
+        ${I.search}
+        <input id="buscador" type="text" placeholder="Buscar canción o artista…" value="${esc(filtro)}">
+      </div>
+      <button class="btn primary" data-act="nuevo-song">${I.plus} Canción</button>
+    </div>
+
+    <div id="listaWrap"></div>
+  `;
+
+  $('#buscador').addEventListener('input', (e) => {
+    filtro = e.target.value;
+    renderLista();
+  });
+
+  renderLista();
+}
+
+function renderLista() {
+  const wrap = $('#listaWrap');
+  if (!wrap) return;
+  const c = actual();
+  if (!c) return;
+
+  const f = filtro.trim().toLowerCase();
+  const lista = f
+    ? c.canciones.filter(s => (s.titulo + ' ' + s.artista).toLowerCase().includes(f))
+    : c.canciones;
+
+  if (lista.length) {
+    wrap.innerHTML = `<ul class="songs">${lista.map(filaCancion).join('')}</ul>`;
+  } else if (c.canciones.length) {
+    wrap.innerHTML = `<p class="muted center pad">Sin resultados para “${esc(filtro)}”.</p>`;
+  } else {
+    wrap.innerHTML = `
+      <div class="empty small">
+        <div class="empty-ic">${I.music}</div>
+        <p>Aún no hay canciones.<br>Agrega la primera con el botón <b>+ Canción</b>.</p>
+      </div>`;
+  }
+
+  hidratarThumbs(wrap);
+}
+
+function filaCancion(s) {
+  return `
+    <li class="song">
+      <div class="thumb">
+        <span>${I.music}</span>
+        <img alt="" data-vid="${esc(s.videoId || '')}">
+      </div>
+      <div class="smeta">
+        <div class="sname">${esc(s.titulo)}</div>
+        <div class="sartist">${esc(s.artista)}</div>
+      </div>
+      <a class="play" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer" title="Abrir en YouTube">${I.play}</a>
+      <button class="icon-btn" data-act="edit-song" data-id="${esc(s.id)}" title="Editar">${I.edit}</button>
+      <button class="icon-btn danger" data-act="del-song" data-id="${esc(s.id)}" title="Eliminar">${I.trash}</button>
+    </li>`;
+}
+
+function hidratarThumbs(root) {
+  root.querySelectorAll('img[data-vid]').forEach(img => {
+    const vid = img.dataset.vid;
+    if (!vid) { img.remove(); return; }
+    img.onerror = () => img.remove();
+    img.src = 'https://i.ytimg.com/vi/' + vid + '/mqdefault.jpg';
+  });
+}
+
+const overlay = $('#overlay');
+
+function abrirModal(titulo, html) {
+  $('#mtitle').textContent = titulo;
+  $('#mbody').innerHTML = html;
+  overlay.hidden = false;
+  const first = $('#mbody input:not([type=file]), #mbody textarea');
+  if (first) setTimeout(() => first.focus(), 60);
+}
+
+function cerrarModal() {
+  overlay.hidden = true;
+  $('#mbody').innerHTML = '';
+}
+
+$('#mclose').addEventListener('click', cerrarModal);
+overlay.addEventListener('click', (e) => { if (e.target === overlay) cerrarModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarModal(); });
+
+let fotoTemp = null;
+
+function modalChar(c) {
+  const editando = !!c;
+  fotoTemp = c ? (c.foto || null) : null;
+
+  abrirModal(editando ? 'Editar personaje' : 'Nuevo personaje', `
+    <form id="frmChar" autocomplete="off">
+      <div class="photorow">
+        <div class="photoPrev" id="photoPrev">
+          ${fotoTemp ? `<img src="${esc(fotoTemp)}" alt="">` : I.image}
+        </div>
+        <div class="photobtns">
+          <label class="btn">
+            ${I.image} Subir foto
+            <input type="file" accept="image/*" id="photoInput" hidden>
+          </label>
+          <button type="button" class="btn" id="photoQuitar">Quitar</button>
+          <p class="hint">Opcional. Se guarda dentro de la app.</p>
+        </div>
+      </div>
+
+      <label class="lbl" for="charName">Nombre del personaje *</label>
+      <input class="inp" id="charName" maxlength="40" required
+             placeholder="Ej: Aiko Tanaka" value="${esc(c ? c.nombre : '')}">
+
+      <div class="mfoot">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="submit" class="btn primary">${editando ? 'Guardar cambios' : 'Crear personaje'}</button>
+      </div>
+    </form>
+  `);
+
+  $('#photoInput').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      fotoTemp = await reducirImagen(file);
+      $('#photoPrev').innerHTML = `<img src="${fotoTemp}" alt="">`;
+    } catch (err) {
+      toast('⚠️ ' + err.message);
+    }
+    e.target.value = '';
+  });
+
+  $('#photoQuitar').addEventListener('click', () => {
+    fotoTemp = null;
+    $('#photoPrev').innerHTML = I.image;
+  });
+
+  $('#frmChar').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const nombre = $('#charName').value.trim();
+    if (!nombre) return;
+
+    if (editando) {
+      c.nombre = nombre;
+      c.foto = fotoTemp;
+      toast('Personaje actualizado');
+    } else {
+      const nuevo = { id: uid('c'), nombre, foto: fotoTemp, canciones: [] };
+      state.chars.push(nuevo);
+      state.selected = nuevo.id;
+      filtro = '';
+      toast('Personaje creado');
+    }
+    guardar();
+    cerrarModal();
+    render();
+  });
+}
+
+function modalSong(s) {
+  const editando = !!s;
+
+  abrirModal(editando ? 'Editar canción' : 'Nueva canción', `
+    <form id="frmSong" autocomplete="off">
+      <label class="lbl" for="songTitle">Canción *</label>
+      <input class="inp" id="songTitle" maxlength="80" required
+             placeholder="Nombre de la canción" value="${esc(s ? s.titulo : '')}">
+
+      <label class="lbl" for="songArtist">Artista *</label>
+      <input class="inp" id="songArtist" maxlength="60" required
+             placeholder="Artista o banda" value="${esc(s ? s.artista : '')}">
+
+      <label class="lbl" for="songUrl">Link de YouTube *</label>
+      <input class="inp" id="songUrl" required
+             placeholder="https://youtu.be/xxxxxxxxxxx" value="${esc(s ? s.url : '')}">
+
+      <p class="err" id="songErr"></p>
+
+      <div class="mfoot">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="submit" class="btn primary">${editando ? 'Guardar' : 'Añadir canción'}</button>
+      </div>
+    </form>
+  `);
+
+  $('#frmSong').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const titulo  = $('#songTitle').value.trim();
+    const artista = $('#songArtist').value.trim();
+    const rawUrl  = $('#songUrl').value.trim();
+    const errEl   = $('#songErr');
+
+    if (!titulo || !artista || !rawUrl) {
+      errEl.textContent = 'Completa todos los campos.';
+      return;
+    }
+
+    const vid = parseYouTube(rawUrl);
+    if (!vid) {
+      errEl.textContent = 'Ese no parece un link válido de YouTube. Ej: https://youtu.be/xxxxxxxxxxx';
+      return;
+    }
+
+    const url = 'https://www.youtube.com/watch?v=' + vid;
+    const c = actual();
+    if (!c) return;
+
+    if (editando) {
+      s.titulo = titulo;
+      s.artista = artista;
+      s.url = url;
+      s.videoId = vid;
+      toast('Canción actualizada');
+    } else {
+      c.canciones.push({ id: uid('s'), titulo, artista, url, videoId: vid });
+      toast('Canción añadida');
+    }
+
+    guardar();
+    cerrarModal();
+    render();
+  });
+}
+
+function borrarChar() {
+  const c = actual();
+  if (!c) return;
+
+  const idx = state.chars.findIndex(x => x.id === c.id);
+  state.chars.splice(idx, 1);
+  const siguiente = state.chars[Math.min(idx, state.chars.length - 1)];
+  state.selected = siguiente ? siguiente.id : null;
+  filtro = '';
+  guardar();
+  render();
+
+  toast('“' + c.nombre + '” eliminado', 'Deshacer', () => {
+    state.chars.splice(idx, 0, c);
+    state.selected = c.id;
+    guardar();
+    render();
+  });
+}
+
+function borrarCancion(id) {
+  const c = actual();
+  if (!c) return;
+  const idx = c.canciones.findIndex(s => s.id === id);
+  if (idx < 0) return;
+
+  const [item] = c.canciones.splice(idx, 1);
+  guardar();
+  renderLista();
+
+  toast('“' + item.titulo + '” eliminada', 'Deshacer', () => {
+    c.canciones.splice(idx, 0, item);
+    guardar();
+    render();
+  });
+}
+
+function buscarCancion(id) {
+  const c = actual();
+  return c ? c.canciones.find(s => s.id === id) || null : null;
+}
+
+function acciones(act, id) {
+  switch (act) {
+    case 'nuevo-char': modalChar(null); break;
+    case 'edit-char':  modalChar(actual()); break;
+    case 'del-char':   borrarChar(); break;
+    case 'nuevo-song': modalSong(null); break;
+    case 'edit-song':  modalSong(buscarCancion(id)); break;
+    case 'del-song':   borrarCancion(id); break;
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const actEl = e.target.closest('[data-act]');
+  if (actEl) {
+    e.preventDefault();
+    acciones(actEl.dataset.act, actEl.dataset.id);
+    return;
+  }
+  const charEl = e.target.closest('[data-char]');
+  if (charEl) {
+    if (charEl.dataset.char !== state.selected) {
+      state.selected = charEl.dataset.char;
+      filtro = '';
+      guardar();
+      render();
+    }
+    return;
+  }
+  if (e.target.closest('[data-close]')) { cerrarModal(); }
+});
+
+let snackToken = 0;
+let snackTimer = null;
+
+function toast(msg, accionTexto, onAccion) {
+  const el = $('#snack');
+  const my = ++snackToken;
+  clearTimeout(snackTimer);
+
+  el.hidden = false;
+  el.innerHTML = '<span>' + esc(msg) + '</span>';
+
+  if (accionTexto) {
+    const b = document.createElement('button');
+    b.className = 'snack-btn';
+    b.textContent = accionTexto;
+    b.addEventListener('click', () => {
+      cerrarSnack(my);
+      if (typeof onAccion === 'function') onAccion();
+    });
+    el.appendChild(b);
+  }
+
+  el.classList.add('show');
+  snackTimer = setTimeout(() => cerrarSnack(my), 4400);
+}
+
+function cerrarSnack(my) {
+  if (my !== snackToken) return;
+  const el = $('#snack');
+  el.classList.remove('show');
+  setTimeout(() => { if (my === snackToken) el.hidden = true; }, 220);
+}
+
+/* ============================ ARRANQUE =========================== */
+cargar();
+render();
+</script>
+</body>
+</html>
