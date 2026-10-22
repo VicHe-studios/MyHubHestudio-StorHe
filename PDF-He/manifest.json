@@ -1,0 +1,8 @@
+{
+  "id": "pdf-he",
+  "titulo": "PDF-He",
+  "icono": "file-text",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Visor de PDF local con renderizado propio"
+}
