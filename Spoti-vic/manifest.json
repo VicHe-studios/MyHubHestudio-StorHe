@@ -1,0 +1,8 @@
+{
+  "id": "spoti-he",
+  "titulo": "Spoti-vic",
+  "icono": "music",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Tu reproductor de música local con playlists y personalización"
+}
