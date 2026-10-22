@@ -1,0 +1,8 @@
+{
+  "id": "galeria-he",
+  "titulo": "Galeria-He",
+  "icono": "image",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Tu galería de imágenes local. Máximo 25MB."
+}
