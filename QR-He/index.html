@@ -26,14 +26,14 @@
     margin: 0; height: 100vh; display: flex; flex-direction: column;
     font-family: 'Segoe UI Variable', system-ui, sans-serif;
     background: var(--card); color: var(--text); overflow: hidden;
-    align-items: center; padding: 20px; justify-content: space-between;
+    align-items: center; justify-content: center; padding: 20px;
   }
 
   .container {
-    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 16px; flex: 1;
+    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 16px;
   }
 
-  .header { text-align: center; margin-bottom: 8px; margin-top: 10px; }
+  .header { text-align: center; margin-bottom: 8px; }
   .header h1 { margin: 0; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .header h1 svg { width: 20px; height: 20px; color: var(--accent); }
 
@@ -64,13 +64,14 @@
     box-shadow: none;
   }
   
-  /* Estilos para los elementos generados por QRCodeJS */
   .qr-container img, .qr-container canvas { display: block; border-radius: 8px; }
   
+  /* Crédito visible */
   .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); margin-top: 15px; flex-shrink: 0;
+    text-align: center; font-size: 11px; color: var(--muted); margin-top: 4px;
   }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .app-credit a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -90,10 +91,11 @@
     <button class="btn" id="btn-download" style="display:none; background: var(--field); color: var(--text); border: 1px solid var(--line);">
       <i data-lucide="download"></i> Descargar Imagen
     </button>
-  </div>
 
-  <div class="app-credit">
-    Códigos QR por <a href="https://github.com/davidshimjs/qrcodejs" target="_blank">QRCode.js</a>
+    <!-- Créditos aquí adentro para que siempre se vean -->
+    <div class="app-credit">
+      Generado con <a href="https://github.com/davidshimjs/qrcodejs" target="_blank">QRCode.js</a>
+    </div>
   </div>
 
   <script src="../../vendor/lucide.min.js"></script>
@@ -120,11 +122,9 @@
         return;
       }
 
-      // Limpiar contenedor
       qrBox.innerHTML = '';
       qrBox.classList.remove('empty');
 
-      // Generar QR usando la librería correcta
       qrCodeInstance = new QRCode(qrBox, {
         text: text,
         width: 160,
@@ -144,7 +144,6 @@
       const a = document.createElement('a');
       a.download = 'CodigoQR.png';
 
-      // La librería genera un canvas o una imagen (según compatibilidad)
       if (canvas) {
         a.href = canvas.toDataURL("image/png");
       } else if (img) {
