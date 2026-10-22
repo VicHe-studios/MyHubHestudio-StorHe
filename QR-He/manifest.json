@@ -1,0 +1,8 @@
+{
+  "id": "qr-he",
+  "titulo": "QR-He",
+  "icono": "qr-code",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Generador rápido de códigos QR offline"
+}
