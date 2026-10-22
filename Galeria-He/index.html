@@ -70,11 +70,9 @@
   .empty svg { width: 48px; height: 48px; opacity: 0.5; }
   .empty p { margin: 0; font-size: 13px; }
 
-  /* Visor de pantalla completa */
   .viewer {
     position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.9);
-    display: none; align-items: center; justify-content: center;
-    backdrop-filter: blur(5px);
+    display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px);
   }
   .viewer.active { display: flex; animation: fadeIn 0.2s; }
   .viewer img { max-width: 95%; max-height: 95%; object-fit: contain; border-radius: 8px; }
@@ -83,7 +81,11 @@
     border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
-  .viewer .close-btn:hover { background: rgba(255,255,255,0.3); }
+
+  .app-credit {
+    text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
+    background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0;
+  }
 
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   ::-webkit-scrollbar { width: 6px; }
@@ -97,10 +99,11 @@
       <div class="header-title">
         <i data-lucide="image"></i> Galería Local
       </div>
-      <div class="storage-info" id="storage-text">0 MB / 25 MB usados</div>
+      <div class="storage-info" id="storage-text">0 MB usados (Límite navegador: ~5MB)</div>
     </div>
     <button class="btn" id="btn-upload"><i data-lucide="upload"></i> Subir</button>
-    <input type="file" id="file-input" accept="image/*" multiple hidden>
+    <!-- Acepta explícitamente svg, png, jpg, gif -->
+    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/svg+xml, image/gif" multiple hidden>
   </div>
 
   <div class="gallery-container">
@@ -116,168 +119,145 @@
     <img src="" id="viewer-img" alt="Vista previa">
   </div>
 
-<script>
-  // Tema
-  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
-  window.addEventListener('message', (e) => {
-    if (e.data?.type === 'myhub:tema:res') {
-      document.documentElement.dataset.modo = e.data.modo;
-      document.documentElement.style.setProperty('--accent', e.data.color);
-    }
-  });
+  <div class="app-credit">
+    Galería Local-First por VicHeStudios
+  </div>
 
-  const MAX_SIZE = 25 * 1024 * 1024; // 25 MB
-  const DB_NAME = 'galeria-db';
-  const STORE_NAME = 'imagenes';
-
-  let db;
-  const gridEl = document.getElementById('grid');
-  const emptyEl = document.getElementById('empty-state');
-  const storageText = document.getElementById('storage-text');
-  const viewer = document.getElementById('viewer');
-  const viewerImg = document.getElementById('viewer-img');
-  
-  // Base de Datos
-  const initDB = () => {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-        }
-      };
-      req.onsuccess = (e) => resolve(e.target.result);
-      req.onerror = (e) => reject(e.target.error);
+  <script src="../../vendor/lucide.min.js"></script>
+  <script>
+    if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'myhub:tema:res') {
+        document.documentElement.dataset.modo = e.data.modo;
+        document.documentElement.style.setProperty('--accent', e.data.color);
+      }
     });
-  };
 
-  const getImages = () => {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result);
-    });
-  };
-
-  const addImage = (file) => {
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.add({ blob: file, name: file.name, date: Date.now() });
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject();
-    });
-  };
-
-  const deleteImage = (id) => {
-    return new Promise((resolve) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      store.delete(id);
-      tx.oncomplete = () => resolve();
-    });
-  };
-
-  // Renderizado
-  const updateStorageInfo = async () => {
-    const images = await getImages();
-    const totalSize = images.reduce((acc, img) => acc + img.blob.size, 0);
-    const usedMB = (totalSize / (1024 * 1024)).toFixed(2);
-    storageText.textContent = `${usedMB} MB / 25 MB usados`;
-  };
-
-  const render = async () => {
-    const images = await getImages();
-    gridEl.innerHTML = '';
+    // Usamos localStorage para que funcione dentro del iframe srcdoc de MyHub
+    const STORAGE_KEY = 'myhub_galeria_imagenes';
     
-    if (images.length === 0) {
-      emptyEl.style.display = 'flex';
-      gridEl.style.display = 'none';
-    } else {
-      emptyEl.style.display = 'none';
-      gridEl.style.display = 'grid';
-      
-      // Ordenar por fecha descendente
-      images.sort((a, b) => b.date - a.date).forEach(img => {
-        const url = URL.createObjectURL(img.blob);
-        const card = document.createElement('div');
-        card.className = 'photo-card';
-        card.innerHTML = `
-          <img src="${url}" loading="lazy">
-          <button class="btn-delete" title="Eliminar"><i data-lucide="trash-2"></i></button>
-        `;
-        
-        card.onclick = (e) => {
-          if (e.target.closest('.btn-delete')) return;
-          viewerImg.src = url;
-          viewer.classList.add('active');
-        };
+    const gridEl = document.getElementById('grid');
+    const emptyEl = document.getElementById('empty-state');
+    const storageText = document.getElementById('storage-text');
+    const viewer = document.getElementById('viewer');
+    const viewerImg = document.getElementById('viewer-img');
+    
+    let imagesData = [];
 
-        card.querySelector('.btn-delete').onclick = async (e) => {
-          e.stopPropagation();
-          if (confirm('¿Eliminar esta imagen?')) {
-            await deleteImage(img.id);
-            URL.revokeObjectURL(url);
-            await render();
-            await updateStorageInfo();
+    const loadImages = () => {
+      try {
+        imagesData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        render();
+      } catch(e) {
+        console.error("Error cargando galería", e);
+      }
+    };
+
+    const saveImages = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(imagesData));
+      } catch(e) {
+        alert('Límite de almacenamiento del navegador alcanzado. Borra algunas imágenes.');
+        // Quitar la última si falla
+        imagesData.pop();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(imagesData));
+        render();
+      }
+    };
+
+    const updateStorageInfo = () => {
+      const totalSize = imagesData.reduce((acc, img) => acc + (img.base64.length * 0.75), 0);
+      const usedMB = (totalSize / (1024 * 1024)).toFixed(2);
+      storageText.textContent = `${usedMB} MB usados (Límite navegador: ~5MB)`;
+    };
+
+    const render = () => {
+      gridEl.innerHTML = '';
+      if (imagesData.length === 0) {
+        emptyEl.style.display = 'flex';
+        gridEl.style.display = 'none';
+      } else {
+        emptyEl.style.display = 'none';
+        gridEl.style.display = 'grid';
+        
+        // Ordenar por fecha
+        imagesData.sort((a, b) => b.date - a.date).forEach((img, index) => {
+          const card = document.createElement('div');
+          card.className = 'photo-card';
+          card.innerHTML = `
+            <img src="${img.base64}" loading="lazy">
+            <button class="btn-delete" title="Eliminar"><i data-lucide="trash-2"></i></button>
+          `;
+          
+          card.onclick = (e) => {
+            if (e.target.closest('.btn-delete')) return;
+            viewerImg.src = img.base64;
+            viewer.classList.add('active');
+          };
+
+          card.querySelector('.btn-delete').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('¿Eliminar esta imagen?')) {
+              imagesData.splice(index, 1);
+              saveImages();
+              render();
+            }
+          };
+          gridEl.appendChild(card);
+        });
+        if (window.lucide) lucide.createIcons();
+      }
+      updateStorageInfo();
+    };
+
+    document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
+    document.getElementById('file-input').onchange = (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+
+      let processed = 0;
+
+      files.forEach(file => {
+        // Validar formatos permitidos (svg, png, jpg, jpeg, gif)
+        if (!file.type.match('image/(png|jpeg|jpg|svg\+xml|gif)')) {
+          alert('Formato no soportado: ' + file.name + '. Usa SVG, PNG, JPG o GIF.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          imagesData.push({
+            id: Date.now() + Math.random(),
+            base64: ev.target.result,
+            name: file.name,
+            date: Date.now()
+          });
+          
+          processed++;
+          if (processed === files.length) {
+            saveImages();
+            render();
           }
         };
-        gridEl.appendChild(card);
+        reader.readAsDataURL(file);
       });
-      if (window.lucide) lucide.createIcons();
-    }
-    await updateStorageInfo();
-  };
-
-  // Subida de archivos
-  document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
-  document.getElementById('file-input').onchange = async (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    const currentImages = await getImages();
-    let currentSize = currentImages.reduce((acc, img) => acc + img.blob.size, 0);
-    let uploadedCount = 0;
-
-    for (const file of files) {
-      if (!file.type.startsWith('image/')) continue;
       
-      if (currentSize + file.size > MAX_SIZE) {
-        alert('Límite de 25MB alcanzado. No se pudo subir: ' + file.name);
-        break; // Detener subida
-      }
+      e.target.value = ''; // Reset input
+    };
 
-      await addImage(file);
-      currentSize += file.size;
-      uploadedCount++;
-    }
-
-    if (uploadedCount > 0) {
-      await render();
-    }
-    e.target.value = '';
-  };
-
-  // Cerrar visor
-  document.getElementById('close-viewer').onclick = () => {
-    viewer.classList.remove('active');
-    viewerImg.src = '';
-  };
-  viewer.onclick = (e) => {
-    if (e.target === viewer) {
+    document.getElementById('close-viewer').onclick = () => {
       viewer.classList.remove('active');
       viewerImg.src = '';
-    }
-  };
+    };
+    viewer.onclick = (e) => {
+      if (e.target === viewer) {
+        viewer.classList.remove('active');
+        viewerImg.src = '';
+      }
+    };
 
-  // Inicio
-  initDB().then(() => {
-    render();
-    if (window.lucide) lucide.createIcons();
-  });
-</script>
-<script src="../../vendor/lucide.min.js"></script>
+    // Inicio
+    loadImages();
+  </script>
 </body>
 </html>
