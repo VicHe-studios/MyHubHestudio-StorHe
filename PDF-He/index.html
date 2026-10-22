@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100vh; width: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+  }
+
+  /* Scrollbars decoradas */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0; gap: 12px; z-index: 10;
+  }
+  .header-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .header-left svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+  .file-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-size { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none;
+    padding: 6px 12px; border-radius: 8px; font-family: inherit; font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary svg { width: 14px; height: 14px; }
+
+  .btn-icon {
+    background: var(--field); color: var(--text); border: 1px solid var(--line);
+    width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: 0.2s; padding: 0;
+  }
+  .btn-icon:hover { background: var(--line); }
+  .btn-icon svg { width: 15px; height: 15px; }
+  .btn-icon.danger { color: var(--danger); }
+  .btn-icon.danger:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
+
+  .pdf-toolbar {
+    display: none; align-items: center; justify-content: center; gap: 8px;
+    padding: 6px 12px; background: var(--field); border-bottom: 1px solid var(--line);
+    flex-shrink: 0; flex-wrap: wrap;
+  }
+  .pdf-toolbar.show { display: flex; }
+  
+  .tool-btn {
+    background: transparent; border: none; color: var(--text);
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: 0.2s;
+  }
+  .tool-btn:hover { background: var(--line); }
+  .tool-btn svg { width: 16px; height: 16px; }
+  
+  .tool-separator { width: 1px; height: 16px; background: var(--line); margin: 0 4px; }
+  
+  .page-input {
+    width: 32px; height: 24px; text-align: center; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--line); border-radius: 4px; background: var(--card); color: var(--text);
+    outline: none; font-family: inherit;
+  }
+  .page-input:focus { border-color: var(--accent); }
+  .page-total { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .zoom-level { font-size: 12px; font-weight: 600; min-width: 40px; text-align: center; }
+
+  .content {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--field);
+  }
+
+  .empty {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    color: var(--muted); padding: 24px; text-align: center; background: var(--card);
+  }
+  .empty svg { width: 56px; height: 56px; opacity: 0.4; color: var(--accent); }
+  .empty h2 { margin: 0; font-size: 15px; color: var(--text); }
+  .empty p { margin: 0; font-size: 12.5px; max-width: 280px; line-height: 1.5; }
+  .empty .btn-primary { margin-top: 8px; padding: 10px 16px; font-size: 13px; }
+
+  /* CONTENEDOR CORREGIDO: Usamos display block para el scroll */
+  .viewer-container {
+    flex: 1; width: 100%; height: 100%;
+    overflow: auto; /* Permite el scroll horizontal y vertical */
+    padding: 20px; display: none; 
+    text-align: center; /* Centra el PDF si es más pequeño que la ventana */
+  }
+
+  /* Envoltorio que crece si el canvas es más ancho, permitiendo el scroll correcto */
+  #pdf-pages {
+    display: inline-block; 
+    min-width: 100%; /* Obliga al contenedor a medir al menos lo que mide la ventana */
+  }
+
+  canvas.pdf-page {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 4px;
+    background: #fff; display: block; 
+    margin: 0 auto; /* Centra el canvas dentro del inline-block */
+    max-width: none;
+  }
+  
+  .loader { display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--muted); margin-top: 40px; font-size: 13px; }
+  .spinner { width: 24px; height: 24px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .app-credit { text-align: center; font-size: 11px; color: var(--muted); padding: 8px; border-top: 1px solid var(--line); background: var(--card); flex-shrink: 0; }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--card); padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    z-index: 1000; max-width: 80%; text-align: center;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+      <span class="file-name" id="file-name">PDF-He</span>
+      <span class="file-size" id="file-size"></span>
+    </div>
+    <div class="header-right">
+      <button class="btn-icon" id="btn-download" style="display:none;" title="Descargar PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+      </button>
+      <button class="btn-icon danger" id="btn-delete" style="display:none;" title="Eliminar PDF">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+      </button>
+      <button class="btn-primary" id="btn-open">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+        Abrir
+      </button>
+      <input type="file" id="file-input" accept="application/pdf,.pdf" hidden>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="empty" id="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+      <h2>No hay ningún PDF cargado</h2>
+      <p>Solo se puede guardar 1 archivo a la vez. Al abrir uno nuevo, se te preguntará si quieres reemplazar al anterior.</p>
+      <button class="btn-primary" id="btn-open-empty">Abrir un PDF</button>
+    </div>
+    
+    <div class="pdf-toolbar" id="pdf-toolbar">
+      <button class="tool-btn" id="btn-zoom-out" title="Alejar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <span class="zoom-level" id="zoom-level">100%</span>
+      <button class="tool-btn" id="btn-zoom-in" title="Acercar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      
+      <div class="tool-separator"></div>
+      
+      <button class="tool-btn" id="btn-prev-page" title="Página anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <input type="text" class="page-input" id="page-input" value="1">
+      <span class="page-total" id="page-total">/ 1</span>
+      <button class="tool-btn" id="btn-next-page" title="Página siguiente">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <div class="tool-separator"></div>
+
+      <button class="tool-btn" id="btn-print" title="Imprimir / Guardar en Drive">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </button>
+    </div>
+
+    <div class="viewer-container" id="viewer-container">
+      <div id="pdf-pages"></div>
+    </div>
+  </div>
+
+  <div class="app-credit">
+    Renderizado con <a href="https://mozilla.github.io/pdf.js/" target="_blank">PDF.js</a> por Mozilla
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const toastEl = document.getElementById('toast');
+  function showToast(msg) {
+    if (window.MyHub && typeof window.MyHub.toast === 'function') { window.MyHub.toast(msg); return; }
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  const DB_NAME = 'myhub_pdf', STORE = 'pdfs', KEY = 'current';
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE); };
+      req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+  }
+  async function getPDF() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(STORE, 'readonly').objectStore(STORE).get(KEY);
+      req.onsuccess = () => resolve(req.result || null); req.onerror = () => reject(req.error);
+    });
+  }
+  async function savePDF(data) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put(data, KEY);
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function deletePDF() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).delete(KEY);
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  let pdfDoc = null, pageNum = 1, pageScale = 1.0, pageRendering = false, pageNumPending = null, currentBlob = null;
+
+  const emptyState = document.getElementById('empty-state');
+  const viewerContainer = document.getElementById('viewer-container');
+  const pdfPages = document.getElementById('pdf-pages');
+  const pdfToolbar = document.getElementById('pdf-toolbar');
+  const fileNameEl = document.getElementById('file-name');
+  const fileSizeEl = document.getElementById('file-size');
+  const fileInput = document.getElementById('file-input');
+  const btnDownload = document.getElementById('btn-download');
+  const btnDelete = document.getElementById('btn-delete');
+  const btnOpen = document.getElementById('btn-open');
+  const zoomLevelEl = document.getElementById('zoom-level');
+  const pageInput = document.getElementById('page-input');
+  const pageTotal = document.getElementById('page-total');
+
+  function formatSize(bytes) {
+    if (!bytes) return '';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function showEmpty() {
+    emptyState.style.display = 'flex';
+    viewerContainer.style.display = 'none';
+    pdfToolbar.classList.remove('show');
+    pdfPages.innerHTML = '';
+    pdfDoc = null;
+    fileNameEl.textContent = 'PDF-He'; fileSizeEl.textContent = '';
+    btnDownload.style.display = 'none'; btnDelete.style.display = 'none';
+    btnOpen.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Abrir`;
+  }
+
+  async function renderPage(num) {
+    pageRendering = true;
+    const page = await pdfDoc.getPage(num);
+    const viewport = page.getViewport({ scale: pageScale });
+    
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pdf-page';
+    const context = canvas.getContext('2d');
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    pdfPages.innerHTML = '';
+    pdfPages.appendChild(canvas);
+
+    const renderContext = { canvasContext: context, viewport: viewport };
+    await page.render(renderContext).promise;
+    
+    pageRendering = false;
+    if (pageNumPending !== null) {
+      renderPage(pageNumPending);
+      pageNumPending = null;
+    }
+    
+    pageInput.value = num;
+    pageTotal.textContent = `/ ${pdfDoc.numPages}`;
+    zoomLevelEl.textContent = Math.round(pageScale * 100) + '%';
+  }
+
+  function queueRenderPage(num) {
+    if (pageRendering) pageNumPending = num;
+    else renderPage(num);
+  }
+
+  async function loadPDF(blob) {
+    viewerContainer.style.display = 'block';
+    pdfToolbar.classList.add('show');
+    pdfPages.innerHTML = '<div class="loader"><div class="spinner"></div><span>Cargando documento...</span></div>';
+    currentBlob = blob;
+
+    try {
+      const arrayBuffer = await blob.arrayBuffer();
+      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+      pdfDoc = await loadingTask.promise;
+      
+      pageNum = 1;
+      
+      const page = await pdfDoc.getPage(1);
+      const baseViewport = page.getViewport({ scale: 1.0 });
+      
+      // Ajuste inicial: -40px por el padding del contenedor
+      const containerWidth = viewerContainer.clientWidth - 40;
+      pageScale = containerWidth / baseViewport.width;
+      if (pageScale < 0.5) pageScale = 0.5;
+
+      pdfPages.innerHTML = '';
+      await renderPage(pageNum);
+    } catch (err) {
+      console.error(err);
+      pdfPages.innerHTML = '<div style="color:var(--danger); text-align:center;">Error al renderizar el PDF.</div>';
+      showToast('Error al leer el PDF');
+    }
+  }
+
+  async function showPDF(data) {
+    emptyState.style.display = 'none';
+    fileNameEl.textContent = data.name || 'documento.pdf';
+    fileSizeEl.textContent = `(${formatSize(data.blob ? data.blob.size : 0)})`;
+    btnDownload.style.display = 'flex'; btnDelete.style.display = 'flex';
+    btnOpen.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> Cambiar`;
+    await loadPDF(data.blob);
+  }
+
+  async function refresh() {
+    try {
+      const data = await getPDF();
+      data ? await showPDF(data) : showEmpty();
+    } catch (err) { console.error(err); showEmpty(); showToast('Error al cargar el PDF'); }
+  }
+
+  document.getElementById('btn-zoom-in').onclick = () => { if(!pdfDoc) return; pageScale += 0.25; queueRenderPage(pageNum); };
+  document.getElementById('btn-zoom-out').onclick = () => { if(!pdfDoc) return; pageScale = Math.max(0.25, pageScale - 0.25); queueRenderPage(pageNum); };
+  document.getElementById('btn-prev-page').onclick = () => { if(!pdfDoc || pageNum <= 1) return; pageNum--; queueRenderPage(pageNum); };
+  document.getElementById('btn-next-page').onclick = () => { if(!pdfDoc || pageNum >= pdfDoc.numPages) return; pageNum++; queueRenderPage(pageNum); };
+  
+  pageInput.onkeyup = (e) => {
+    if (e.key === 'Enter' && pdfDoc) {
+      let val = parseInt(pageInput.value);
+      if (val >= 1 && val <= pdfDoc.numPages) { pageNum = val; queueRenderPage(pageNum); }
+      else { pageInput.value = pageNum; }
+    }
+  };
+
+  document.getElementById('btn-print').onclick = () => {
+    if (!currentBlob) return;
+    const url = URL.createObjectURL(currentBlob);
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    iframe.onload = () => { iframe.contentWindow.print(); };
+  };
+
+  btnOpen.onclick = () => fileInput.click();
+  document.getElementById('btn-open-empty').onclick = () => fileInput.click();
+
+  fileInput.onchange = async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { showToast('Solo se permiten archivos PDF'); return; }
+
+    try {
+      const existing = await getPDF();
+      if (existing && !confirm('Ya hay un PDF guardado. ¿Quieres reemplazarlo?')) return;
+      await savePDF({ blob: file, name: file.name, date: Date.now() });
+      await refresh(); showToast('PDF cargado correctamente');
+    } catch (err) { console.error(err); showToast('No se pudo guardar el PDF'); }
+  };
+
+  btnDownload.onclick = async () => {
+    const data = await getPDF();
+    if (!data || !data.blob) return;
+    const url = URL.createObjectURL(data.blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = data.name || 'documento.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  btnDelete.onclick = async () => {
+    if (!confirm('¿Eliminar el PDF guardado?')) return;
+    try { await deletePDF(); showEmpty(); showToast('PDF eliminado'); } catch (err) { showToast('Error al eliminar'); }
+  };
+
+  refresh();
+</script>
+</body>
+</html>
