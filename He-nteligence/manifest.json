@@ -1,0 +1,8 @@
+{
+  "id": "he-nteligence",
+  "titulo": "He-nteligence",
+  "icono": "bot",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Interfaz de chat rápida con IA"
+}
