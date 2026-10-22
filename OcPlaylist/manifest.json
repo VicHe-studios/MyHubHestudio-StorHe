@@ -1,7 +1,7 @@
 {
   "id": "playlists-oc",
   "titulo": "Playlists OC",
-  "icono": "music",
+  "icono": "list-music",
   "main": "index.html",
   "autor": "Ev4nsss_",
   "descripcion": "Organiza playlists musicales para tus personajes."
