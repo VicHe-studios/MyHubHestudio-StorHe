@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: row;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text); overflow: hidden;
+  }
+
+  /* Scrollbar Estilizada */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: 140px; background: var(--field); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s;
+  }
+  .sidebar-header {
+    padding: 12px 10px; border-bottom: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .btn-new {
+    background: var(--accent); color: #fff; border: none;
+    padding: 8px; border-radius: 8px; font-weight: 600; font-size: 12px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: filter 0.2s;
+  }
+  .btn-new:hover { filter: brightness(1.1); }
+  .btn-new svg { width: 14px; height: 14px; }
+
+  .chat-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .chat-item {
+    padding: 8px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    color: var(--text); transition: background 0.15s;
+  }
+  .chat-item:hover { background: var(--line); }
+  .chat-item.active { background: var(--accent-soft); color: var(--accent); }
+  .chat-item .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat-actions { display: none; gap: 4px; }
+  .chat-item:hover .chat-actions, .chat-item.active .chat-actions { display: flex; }
+  .btn-icon-sm {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    padding: 2px; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-icon-sm:hover { color: var(--text); background: rgba(0,0,0,0.1); }
+  .btn-icon-sm svg { width: 12px; height: 12px; }
+
+  .sidebar-footer { padding: 10px; border-top: 1px solid var(--line); }
+  .btn-settings {
+    width: 100%; background: transparent; border: 1px solid var(--line); color: var(--text);
+    padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: 0.2s;
+  }
+  .btn-settings:hover { background: var(--card); border-color: var(--accent); }
+  .btn-settings svg { width: 14px; height: 14px; }
+
+  /* ===== CHAT AREA ===== */
+  .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  
+  .chat-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--card); flex-shrink: 0;
+  }
+  .chat-title { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .messages {
+    flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    scroll-behavior: smooth;
+  }
+
+  .msg {
+    max-width: 85%; padding: 10px 14px; border-radius: 12px;
+    font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .msg.user {
+    align-self: flex-end; background: var(--accent); color: #fff;
+    border-bottom-right-radius: 2px;
+  }
+  .msg.ai {
+    align-self: flex-start; background: var(--field); color: var(--text);
+    border: 1px solid var(--line); border-bottom-left-radius: 2px;
+  }
+  .msg.error {
+    align-self: center; background: rgba(239, 68, 68, 0.1); color: var(--danger);
+    border: 1px solid var(--danger); text-align: center; font-size: 12px;
+  }
+
+  /* Indicador de escribiendo */
+  .typing { display: flex; gap: 4px; align-items: center; padding: 12px 16px; }
+  .typing span {
+    width: 6px; height: 6px; background: var(--muted); border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+  .typing span:nth-child(1) { animation-delay: -0.32s; }
+  .typing span:nth-child(2) { animation-delay: -0.16s; }
+
+  .input-area {
+    padding: 12px 16px; border-top: 1px solid var(--line);
+    background: var(--card); display: flex; gap: 8px; align-items: flex-end;
+  }
+  .input-box {
+    flex: 1; padding: 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--line); background: var(--field); color: var(--text);
+    font-family: inherit; font-size: 13px; outline: none; resize: none;
+    max-height: 100px; min-height: 42px; transition: border-color 0.2s;
+  }
+  .input-box:focus { border-color: var(--accent); }
+  
+  .btn-send {
+    background: var(--accent); color: #fff; border: none;
+    width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    transition: 0.2s;
+  }
+  .btn-send:hover { filter: brightness(1.1); transform: scale(1.05); }
+  .btn-send:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-send svg { width: 18px; height: 18px; }
+
+  /* ===== MODALES ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); width: 90%; max-width: 320px; padding: 20px;
+    border-radius: 16px; border: 1px solid var(--line);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .input-group input, .input-group select {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--field); color: var(--text);
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .input-group input:focus, .input-group select:focus { border-color: var(--accent); }
+
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn:hover { filter: brightness(1.1); }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <button class="btn-new" id="btn-new-chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Nuevo Chat
+      </button>
+    </div>
+    <div class="chat-list" id="chat-list"></div>
+    <div class="sidebar-footer">
+      <button class="btn-settings" id="btn-open-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        Ajustes
+      </button>
+    </div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="chat-area">
+    <div class="chat-header">
+      <div class="chat-title" id="chat-title">Selecciona o crea un chat</div>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <textarea class="input-box" id="input-box" placeholder="Escribe un mensaje..." rows="1"></textarea>
+      <button class="btn-send" id="btn-send" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTES -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal">
+      <h3>Ajustes de IA</h3>
+      <div class="input-group">
+        <label>API Token (OpenAI / Groq / OpenRouter)</label>
+        <input type="password" id="inp-token" placeholder="sk-...">
+      </div>
+      <div class="input-group">
+        <label>Tu Nombre</label>
+        <input type="text" id="inp-name" placeholder="Ej: Víctor">
+      </div>
+      <div class="input-group">
+        <label>Longitud de respuestas</label>
+        <select id="sel-length">
+          <option value="short">Cortas (1-2 frases)</option>
+          <option value="medium" selected>Medias (Párrafo conciso)</option>
+          <option value="long">Largas (Explicación detallada)</option>
+          <option value="detailed">Muy detalladas (Análisis profundo)</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-settings">Cancelar</button>
+        <button class="btn primary" id="btn-save-settings">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: RENOMBRAR -->
+  <div class="modal-overlay" id="modal-rename">
+    <div class="modal">
+      <h3>Renombrar Chat</h3>
+      <div class="input-group">
+        <input type="text" id="inp-rename" placeholder="Nuevo nombre...">
+      </div>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-rename">Cancelar</button>
+        <button class="btn primary" id="btn-save-rename">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // 1. Sincronización de Tema
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  // 2. Estado Global
+  let config = JSON.parse(localStorage.getItem('myhub_he_nteligence_config') || '{}');
+  if (!config.token) config.token = '';
+  if (!config.name) config.name = 'Usuario';
+  if (!config.length) config.length = 'medium';
+
+  let chats = JSON.parse(localStorage.getItem('myhub_he_nteligence_chats') || '[]');
+  let activeChatId = localStorage.getItem('myhub_he_nteligence_active') || null;
+  let isGenerating = false;
+
+  // 3. Elementos DOM
+  const chatListEl = document.getElementById('chat-list');
+  const messagesEl = document.getElementById('messages');
+  const inputBox = document.getElementById('input-box');
+  const btnSend = document.getElementById('btn-send');
+  const chatTitle = document.getElementById('chat-title');
+  
+  const modalSettings = document.getElementById('modal-settings');
+  const modalRename = document.getElementById('modal-rename');
+  let renamingChatId = null;
+
+  // 4. Lógica de Configuración
+  const saveConfig = () => {
+    localStorage.setItem('myhub_he_nteligence_config', JSON.stringify(config));
+  };
+
+  const getSystemPrompt = () => {
+    const lengths = {
+      short: 'Responde de forma muy breve y directa, en 1 o 2 frases máximo.',
+      medium: 'Responde con un párrafo conciso y bien estructurado.',
+      long: 'Proporciona una explicación detallada y completa.',
+      detailed: 'Proporciona un análisis muy profundo, exhaustivo y con ejemplos si es necesario.'
+    };
+    return `Eres He-nteligence, un asistente de IA útil e inteligente. El usuario se llama ${config.name}. ${lengths[config.length]}`;
+  };
+
+  // 5. Lógica de Chats
+  const saveChats = () => {
+    localStorage.setItem('myhub_he_nteligence_chats', JSON.stringify(chats));
+    if (activeChatId) localStorage.setItem('myhub_he_nteligence_active', activeChatId);
+  };
+
+  const getActiveChat = () => chats.find(c => c.id === activeChatId);
+
+  const createChat = () => {
+    const newChat = {
+      id: 'chat_' + Date.now(),
+      title: 'Nuevo Chat',
+      messages: []
+    };
+    chats.unshift(newChat);
+    activeChatId = newChat.id;
+    saveChats();
+    renderSidebar();
+    renderMessages();
+    inputBox.focus();
+  };
+
+  const deleteChat = (id, e) => {
+    e.stopPropagation();
+    if (!confirm('¿Eliminar este chat?')) return;
+    chats = chats.filter(c => c.id !== id);
+    if (activeChatId === id) {
+      activeChatId = chats.length > 0 ? chats[0].id : null;
+    }
+    saveChats();
+    renderSidebar();
+    renderMessages();
+  };
+
+  const openRename = (id, e) => {
+    e.stopPropagation();
+    renamingChatId = id;
+    const chat = chats.find(c => c.id === id);
+    document.getElementById('inp-rename').value = chat.title;
+    modalRename.classList.add('active');
+    setTimeout(() => document.getElementById('inp-rename').focus(), 50);
+  };
+
+  // 6. Renderizado
+  const renderSidebar = () => {
+    chatListEl.innerHTML = '';
+    chats.forEach(chat => {
+      const el = document.createElement('div');
+      el.className = 'chat-item' + (chat.id === activeChatId ? ' active' : '');
+      el.innerHTML = `
+        <span class="title">${chat.title}</span>
+        <div class="chat-actions">
+          <button class="btn-icon-sm" onclick="openRename('${chat.id}', event)" title="Renombrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </button>
+          <button class="btn-icon-sm" onclick="deleteChat('${chat.id}', event)" title="Eliminar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      `;
+      el.onclick = () => {
+        activeChatId = chat.id;
+        saveChats();
+        renderSidebar();
+        renderMessages();
+      };
+      chatListEl.appendChild(el);
+    });
+  };
+
+  const renderMessages = () => {
+    messagesEl.innerHTML = '';
+    const chat = getActiveChat();
+    
+    if (!chat) {
+      chatTitle.textContent = 'Selecciona o crea un chat';
+      messagesEl.innerHTML = `<div style="text-align:center; color:var(--muted); margin-top:20px; font-size:13px;">Abre un chat o crea uno nuevo para empezar.</div>`;
+      inputBox.disabled = true;
+      btnSend.disabled = true;
+      return;
+    }
+
+    chatTitle.textContent = chat.title;
+    inputBox.disabled = false;
+    btnSend.disabled = false;
+
+    chat.messages.forEach(msg => {
+      addMessageToDOM(msg.role, msg.content);
+    });
+    
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+
+  const addMessageToDOM = (role, text) => {
+    const el = document.createElement('div');
+    el.className = `msg ${role}`;
+    el.textContent = text;
+    messagesEl.appendChild(el);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  };
+
+  // 7. Lógica de Envío y API
+  const sendMessage = async () => {
+    const text = inputBox.value.trim();
+    if (!text || isGenerating || !activeChatId) return;
+
+    if (!config.token) {
+      modalSettings.classList.add('active');
+      alert('Por favor, introduce tu API Token en los ajustes primero.');
+      return;
+    }
+
+    const chat = getActiveChat();
+    
+    // Añadir mensaje del usuario
+    chat.messages.push({ role: 'user', content: text });
+    addMessageToDOM('user', text);
+    inputBox.value = '';
+    inputBox.style.height = 'auto';
+    saveChats();
+
+    // Cambiar título si es el primer mensaje
+    if (chat.messages.length === 1) {
+      chat.title = text.substring(0, 20) + (text.length > 20 ? '...' : '');
+      renderSidebar();
+      chatTitle.textContent = chat.title;
+      saveChats();
+    }
+
+    // Preparar UI para esperar respuesta
+    isGenerating = true;
+    btnSend.disabled = true;
+    inputBox.disabled = true;
+
+    const typingEl = document.createElement('div');
+    typingEl.className = 'msg ai typing';
+    typingEl.innerHTML = '<span></span><span></span><span></span>';
+    messagesEl.appendChild(typingEl);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    try {
+      // Petición a la API
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${config.token}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini', // Modelo rápido y económico
+          messages: [
+            { role: 'system', content: getSystemPrompt() },
+            ...chat.messages
+          ],
+          temperature: 0.7
+        })
+      });
+
+      const data = await response.json();
+      typingEl.remove();
+
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Error en la petición');
+      }
+
+      const aiText = data.choices[0].message.content;
+      chat.messages.push({ role: 'assistant', content: aiText });
+      addMessageToDOM('assistant', aiText);
+      saveChats();
+
+    } catch (error) {
+      typingEl.remove();
+      addMessageToDOM('error', `Error: ${error.message}`);
+    } finally {
+      isGenerating = false;
+      btnSend.disabled = false;
+      inputBox.disabled = false;
+      inputBox.focus();
+    }
+  };
+
+  // 8. Event Listeners
+  document.getElementById('btn-new-chat').onclick = createChat;
+
+  document.getElementById('btn-open-settings').onclick = () => {
+    document.getElementById('inp-token').value = config.token;
+    document.getElementById('inp-name').value = config.name;
+    document.getElementById('sel-length').value = config.length;
+    modalSettings.classList.add('active');
+  };
+
+  document.getElementById('btn-cancel-settings').onclick = () => modalSettings.classList.remove('active');
+  document.getElementById('btn-save-settings').onclick = () => {
+    config.token = document.getElementById('inp-token').value.trim();
+    config.name = document.getElementById('inp-name').value.trim() || 'Usuario';
+    config.length = document.getElementById('sel-length').value;
+    saveConfig();
+    modalSettings.classList.remove('active');
+    if (window.MyHub) window.MyHub.toast('Ajustes guardados');
+  };
+
+  document.getElementById('btn-cancel-rename').onclick = () => modalRename.classList.remove('active');
+  document.getElementById('btn-save-rename').onclick = () => {
+    const newName = document.getElementById('inp-rename').value.trim();
+    if (newName && renamingChatId) {
+      const chat = chats.find(c => c.id === renamingChatId);
+      chat.title = newName;
+      saveChats();
+      renderSidebar();
+      if (activeChatId === renamingChatId) chatTitle.textContent = newName;
+    }
+    modalRename.classList.remove('active');
+  };
+
+  // Enviar con Enter (Shift+Enter para salto de línea)
+  inputBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  // Auto-resize del textarea
+  inputBox.addEventListener('input', () => {
+    inputBox.style.height = 'auto';
+    inputBox.style.height = (inputBox.scrollHeight) + 'px';
+  });
+
+  btnSend.onclick = sendMessage;
+
+  // Iniciar
+  renderSidebar();
+  renderMessages();
+  if (!config.token) {
+    setTimeout(() => modalSettings.classList.add('active'), 500);
+  }
+</script>
+</body>
+</html>
