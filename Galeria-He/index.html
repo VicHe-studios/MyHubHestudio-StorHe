@@ -70,7 +70,7 @@
   .empty svg { width: 48px; height: 48px; opacity: 0.5; }
   .empty p { margin: 0; font-size: 13px; }
 
-  /* Visor mejorado */
+  /* Visor de imagen */
   .viewer {
     position: fixed; inset: 0; z-index: 100; 
     background: rgba(0, 0, 0, 0.7); 
@@ -85,12 +85,13 @@
     z-index: 1;
   }
   
+  /* Botón de cerrar con z-index alto para que siempre se vea */
   .viewer .close-btn {
     position: absolute; top: 16px; right: 16px; 
     background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
     color: #fff; width: 40px; height: 40px; border-radius: 50%;
     cursor: pointer; display: flex; align-items: center; justify-content: center;
-    transition: all 0.2s; z-index: 10;
+    transition: all 0.2s; z-index: 999;
   }
   .viewer .close-btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
   .viewer .close-btn svg { width: 20px; height: 20px; }
@@ -122,142 +123,147 @@
   </div>
 
   <div class="viewer" id="viewer">
-    <!-- SVG Nativo para la X, asegurando que se vea siempre -->
+    <!-- Usando Lucide como pediste -->
     <button class="close-btn" id="close-viewer" title="Cerrar">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      <i data-lucide="x"></i>
     </button>
     <img src="" id="viewer-img" alt="Vista previa">
   </div>
 
-<script>
-  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
-  window.addEventListener('message', (e) => {
-    if (e.data?.type === 'myhub:tema:res') {
-      document.documentElement.dataset.modo = e.data.modo;
-      document.documentElement.style.setProperty('--accent', e.data.color);
-    }
-  });
+  <script src="../../vendor/lucide.min.js"></script>
+  <script>
+    if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'myhub:tema:res') {
+        document.documentElement.dataset.modo = e.data.modo;
+        document.documentElement.style.setProperty('--accent', e.data.color);
+      }
+    });
 
-  const STORAGE_KEY = 'myhub_galeria_imagenes';
-  
-  const gridEl = document.getElementById('grid');
-  const emptyEl = document.getElementById('empty-state');
-  const storageText = document.getElementById('storage-text');
-  const viewer = document.getElementById('viewer');
-  const viewerImg = document.getElementById('viewer-img');
-  
-  let imagesData = [];
+    const STORAGE_KEY = 'myhub_galeria_imagenes';
+    
+    const gridEl = document.getElementById('grid');
+    const emptyEl = document.getElementById('empty-state');
+    const storageText = document.getElementById('storage-text');
+    const viewer = document.getElementById('viewer');
+    const viewerImg = document.getElementById('viewer-img');
+    
+    let imagesData = [];
 
-  const loadImages = () => {
-    try {
-      imagesData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-      render();
-    } catch(e) {
-      console.error("Error cargando galería", e);
-    }
-  };
+    const loadImages = () => {
+      try {
+        imagesData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        render();
+        // Inicializar iconos de Lucide
+        if (window.lucide) lucide.createIcons();
+      } catch(e) {
+        console.error("Error cargando galería", e);
+      }
+    };
 
-  const saveImages = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(imagesData));
-    } catch(e) {
-      alert('Límite de almacenamiento del navegador alcanzado. Borra algunas imágenes.');
-      imagesData.pop();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(imagesData));
-      render();
-    }
-  };
+    const saveImages = () => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(imagesData));
+      } catch(e) {
+        alert('Límite de almacenamiento del navegador alcanzado. Borra algunas imágenes.');
+        imagesData.pop();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(imagesData));
+        render();
+      }
+    };
 
-  const updateStorageInfo = () => {
-    const totalSize = imagesData.reduce((acc, img) => acc + (img.base64.length * 0.75), 0);
-    const usedMB = (totalSize / (1024 * 1024)).toFixed(2);
-    storageText.textContent = `${usedMB} MB usados (Límite navegador: ~5MB)`;
-  };
+    const updateStorageInfo = () => {
+      const totalSize = imagesData.reduce((acc, img) => acc + (img.base64.length * 0.75), 0);
+      const usedMB = (totalSize / (1024 * 1024)).toFixed(2);
+      storageText.textContent = `${usedMB} MB usados (Límite navegador: ~5MB)`;
+    };
 
-  const render = () => {
-    gridEl.innerHTML = '';
-    if (imagesData.length === 0) {
-      emptyEl.style.display = 'flex';
-      gridEl.style.display = 'none';
-    } else {
-      emptyEl.style.display = 'none';
-      gridEl.style.display = 'grid';
-      
-      imagesData.sort((a, b) => b.date - a.date).forEach((img, index) => {
-        const card = document.createElement('div');
-        card.className = 'photo-card';
-        card.innerHTML = `
-          <img src="${img.base64}" loading="lazy">
-          <button class="btn-delete" title="Eliminar"><i data-lucide="trash-2"></i></button>
-        `;
+    const render = () => {
+      gridEl.innerHTML = '';
+      if (imagesData.length === 0) {
+        emptyEl.style.display = 'flex';
+        gridEl.style.display = 'none';
+      } else {
+        emptyEl.style.display = 'none';
+        gridEl.style.display = 'grid';
         
-        card.onclick = (e) => {
-          if (e.target.closest('.btn-delete')) return;
-          viewerImg.src = img.base64;
-          viewer.classList.add('active');
-        };
+        imagesData.sort((a, b) => b.date - a.date).forEach((img, index) => {
+          const card = document.createElement('div');
+          card.className = 'photo-card';
+          card.innerHTML = `
+            <img src="${img.base64}" loading="lazy">
+            <button class="btn-delete" title="Eliminar"><i data-lucide="trash-2"></i></button>
+          `;
+          
+          card.onclick = (e) => {
+            if (e.target.closest('.btn-delete')) return;
+            viewerImg.src = img.base64;
+            viewer.classList.add('active');
+            // Re-inicializar iconos por si acaso el botón de cerrar necesita renderizarse de nuevo
+            if (window.lucide) lucide.createIcons();
+          };
 
-        card.querySelector('.btn-delete').onclick = (e) => {
-          e.stopPropagation();
-          if (confirm('¿Eliminar esta imagen?')) {
-            imagesData.splice(index, 1);
+          card.querySelector('.btn-delete').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('¿Eliminar esta imagen?')) {
+              imagesData.splice(index, 1);
+              saveImages();
+              render();
+            }
+          };
+          gridEl.appendChild(card);
+        });
+        if (window.lucide) lucide.createIcons();
+      }
+      updateStorageInfo();
+    };
+
+    document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
+    document.getElementById('file-input').onchange = (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) return;
+
+      let processed = 0;
+
+      files.forEach(file => {
+        if (!file.type.match('image/(png|jpeg|jpg|svg\+xml|gif)')) {
+          alert('Formato no soportado: ' + file.name + '. Usa SVG, PNG, JPG o GIF.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          imagesData.push({
+            id: Date.now() + Math.random(),
+            base64: ev.target.result,
+            name: file.name,
+            date: Date.now()
+          });
+          
+          processed++;
+          if (processed === files.length) {
             saveImages();
             render();
           }
         };
-        gridEl.appendChild(card);
+        reader.readAsDataURL(file);
       });
-      if (window.lucide) lucide.createIcons();
-    }
-    updateStorageInfo();
-  };
+      
+      e.target.value = '';
+    };
 
-  document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
-  document.getElementById('file-input').onchange = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    let processed = 0;
-
-    files.forEach(file => {
-      if (!file.type.match('image/(png|jpeg|jpg|svg\+xml|gif)')) {
-        alert('Formato no soportado: ' + file.name + '. Usa SVG, PNG, JPG o GIF.');
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        imagesData.push({
-          id: Date.now() + Math.random(),
-          base64: ev.target.result,
-          name: file.name,
-          date: Date.now()
-        });
-        
-        processed++;
-        if (processed === files.length) {
-          saveImages();
-          render();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    e.target.value = '';
-  };
-
-  document.getElementById('close-viewer').onclick = () => {
-    viewer.classList.remove('active');
-    viewerImg.src = '';
-  };
-  viewer.onclick = (e) => {
-    if (e.target === viewer) {
+    document.getElementById('close-viewer').onclick = () => {
       viewer.classList.remove('active');
       viewerImg.src = '';
-    }
-  };
+    };
+    viewer.onclick = (e) => {
+      if (e.target === viewer) {
+        viewer.classList.remove('active');
+        viewerImg.src = '';
+      }
+    };
 
-  loadImages();
-</script>
+    loadImages();
+  </script>
 </body>
 </html>
