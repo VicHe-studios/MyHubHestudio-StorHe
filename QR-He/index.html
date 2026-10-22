@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Librería QRJS correcta vía CDN -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
@@ -22,15 +21,20 @@
     --field: #2a2a31;
   }
   * { box-sizing: border-box; }
+  
+  /* Body con scroll y margen para que no se pegue arriba/abajo */
   body {
-    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
     font-family: 'Segoe UI Variable', system-ui, sans-serif;
-    background: var(--card); color: var(--text); overflow: hidden;
-    align-items: center; justify-content: center; padding: 20px;
+    background: var(--card); color: var(--text); 
+    overflow-y: auto; /* Permite el scroll si el contenido es muy alto */
+    padding: 24px 20px;
+    align-items: center;
   }
 
   .container {
     width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 16px;
+    margin: auto; /* Centra el contenido si sobra espacio */
   }
 
   .header { text-align: center; margin-bottom: 8px; }
@@ -66,9 +70,8 @@
   
   .qr-container img, .qr-container canvas { display: block; border-radius: 8px; }
   
-  /* Crédito visible */
   .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); margin-top: 4px;
+    text-align: center; font-size: 11px; color: var(--muted); margin-top: 4px; margin-bottom: 16px;
   }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
   .app-credit a:hover { text-decoration: underline; }
@@ -92,7 +95,6 @@
       <i data-lucide="download"></i> Descargar Imagen
     </button>
 
-    <!-- Créditos aquí adentro para que siempre se vean -->
     <div class="app-credit">
       Generado con <a href="https://github.com/davidshimjs/qrcodejs" target="_blank">QRCode.js</a>
     </div>
