@@ -78,7 +78,6 @@
   }
   .tree-item:hover { background: var(--line); }
   .tree-item.active { background: var(--accent-soft); color: var(--accent); }
-  /* Carpeta seleccionada para guardar archivos nuevos */
   .tree-item.folder-active { background: var(--line); color: var(--accent); }
   
   .tree-item svg { width: 14px; height: 14px; flex-shrink: 0; }
@@ -101,7 +100,7 @@
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 12px; font-size: 11px; font-weight: 500; flex-shrink: 0;
   }
-  .status-left, .status-right { display: flex; gap: 16px; }
+  .status-left, .status-right { display: flex; gap: 16px; align-items: center; }
 
   .empty-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -182,6 +181,11 @@
     <div class="status-right">
       <span id="status-lang">Texto plano</span>
       <span id="status-pos">Ln 1, Col 1</span>
+      <!-- CRÉDITOS INTEGRADOS AQUÍ -->
+      <span style="opacity: 0.8; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 16px; display: flex; gap: 4px;">
+        Motor: <a href="https://ace.c9.io/" target="_blank" style="color: #fff; text-decoration: underline; font-weight: 600;">Ace</a> • 
+        ZIP: <a href="https://stuk.github.io/jszip/" target="_blank" style="color: #fff; text-decoration: underline; font-weight: 600;">JSZip</a>
+      </span>
     </div>
   </div>
 
@@ -240,7 +244,7 @@
 
   let files = [];
   let activeFileId = null;
-  let activeFolderId = 'root'; // Carpeta seleccionada para crear archivos
+  let activeFolderId = 'root';
 
   try {
     const stored = localStorage.getItem('codhe_files_v3');
@@ -321,7 +325,6 @@
         const div = document.createElement('div');
         const isFolder = child.type === 'folder';
         
-        // Clases de estado: active para archivo abierto, folder-active para carpeta seleccionada
         let className = 'tree-item';
         if (activeFileId === child.id && !isFolder) className += ' active';
         if (activeFolderId === child.id && isFolder) className += ' folder-active';
@@ -333,7 +336,6 @@
           ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`
           : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
 
-        // Botones de acción extra (Mover solo para archivos)
         let moveBtn = isFolder ? '' : `<button onclick="moveItem(event, '${child.id}')" title="Mover a carpeta..."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><polyline points="12 11 12 17"></polyline><polyline points="9 14 12 11 15 14"></polyline></svg></button>`;
 
         div.innerHTML = `
@@ -349,12 +351,10 @@
         div.onclick = (e) => {
           if (e.target.closest('.actions')) return;
           if (isFolder) {
-            // Al hacer clic en carpeta, se selecciona como destino
             activeFolderId = child.id;
             renderTree();
           } else {
-            // Al hacer clic en archivo, se abre en el editor
-            activeFolderId = child.parent; // También actualiza la carpeta destino
+            activeFolderId = child.parent;
             openFile(child.id);
           }
         };
@@ -428,7 +428,6 @@
     e.stopPropagation();
     moveFileId = id;
     
-    // Llenar el select con las carpetas disponibles (excepto la carpeta actual si es que está en una)
     moveSelect.innerHTML = '';
     const folders = files.filter(f => f.type === 'folder');
     
@@ -439,7 +438,6 @@
       moveSelect.appendChild(opt);
     });
 
-    // Seleccionar por defecto la carpeta actual del archivo
     const currentFile = files.find(f => f.id === id);
     if (currentFile) moveSelect.value = currentFile.parent;
 
@@ -463,7 +461,6 @@
     showPrompt('Nuevo Archivo', 'archivo.txt', (name) => {
       if (!name) return;
       const newId = generateId();
-      // Se crea dentro de la carpeta actualmente seleccionada (activeFolderId)
       files.push({ id: newId, parent: activeFolderId, name, type: 'file', content: '' });
       saveToStorage();
       renderTree();
@@ -474,7 +471,6 @@
   document.getElementById('btn-new-folder').onclick = () => {
     showPrompt('Nueva Carpeta', 'nueva_carpeta', (name) => {
       if (!name) return;
-      // Las carpetas siempre se crean en la raíz para evitar anidamientos infinitos en esta versión
       files.push({ id: generateId(), parent: 'root', name, type: 'folder' });
       saveToStorage();
       renderTree();
