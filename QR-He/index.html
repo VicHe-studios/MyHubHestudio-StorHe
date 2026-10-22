@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Librería QR vía CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js"></script>
+<!-- Librería QRJS correcta vía CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
   :root {
     --accent: #2563eb;
@@ -26,14 +26,14 @@
     margin: 0; height: 100vh; display: flex; flex-direction: column;
     font-family: 'Segoe UI Variable', system-ui, sans-serif;
     background: var(--card); color: var(--text); overflow: hidden;
-    align-items: center; justify-content: center; padding: 20px;
+    align-items: center; padding: 20px; justify-content: space-between;
   }
 
   .container {
-    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 16px;
+    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 16px; flex: 1;
   }
 
-  .header { text-align: center; margin-bottom: 8px; }
+  .header { text-align: center; margin-bottom: 8px; margin-top: 10px; }
   .header h1 { margin: 0; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .header h1 svg { width: 20px; height: 20px; color: var(--accent); }
 
@@ -64,9 +64,13 @@
     box-shadow: none;
   }
   
-  /* El canvas que genera la librería */
-  #qr-canvas { display: none; max-width: 100%; height: auto; }
-  .qr-container canvas { display: block; }
+  /* Estilos para los elementos generados por QRCodeJS */
+  .qr-container img, .qr-container canvas { display: block; border-radius: 8px; }
+  
+  .app-credit {
+    text-align: center; font-size: 11px; color: var(--muted); margin-top: 15px; flex-shrink: 0;
+  }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -88,10 +92,12 @@
     </button>
   </div>
 
-  <!-- Lucide Local -->
+  <div class="app-credit">
+    Códigos QR por <a href="https://github.com/davidshimjs/qrcodejs" target="_blank">QRCode.js</a>
+  </div>
+
   <script src="../../vendor/lucide.min.js"></script>
   <script>
-    // Sincronización de Tema con MyHub
     if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'myhub:tema:res') {
@@ -104,11 +110,9 @@
     const btnGenerate = document.getElementById('btn-generate');
     const btnDownload = document.getElementById('btn-download');
     const qrBox = document.getElementById('qr-box');
-    const qrPlaceholder = document.getElementById('qr-placeholder');
 
     let qrCodeInstance = null;
 
-    // Lógica de generación
     btnGenerate.onclick = () => {
       const text = inputText.value.trim();
       if (!text) {
@@ -120,43 +124,40 @@
       qrBox.innerHTML = '';
       qrBox.classList.remove('empty');
 
-      // Generar QR usando la librería del CDN
+      // Generar QR usando la librería correcta
       qrCodeInstance = new QRCode(qrBox, {
         text: text,
         width: 160,
         height: 160,
         colorDark : "#000000",
         colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.M // Nivel de corrección de errores medio
+        correctLevel : QRCode.CorrectLevel.M
       });
 
-      // El canvas se genera dentro del qrBox, lo estilizamos
-      const canvas = qrBox.querySelector('canvas');
-      if (canvas) {
-        canvas.style.display = 'block';
-        canvas.style.borderRadius = '8px';
-      }
-
-      // Mostrar botón de descarga
       btnDownload.style.display = 'flex';
     };
 
-    // Lógica de descarga
     btnDownload.onclick = () => {
       const canvas = qrBox.querySelector('canvas');
-      if (!canvas) return;
-
-      // Convertir canvas a imagen descargable
-      const url = canvas.toDataURL("image/png");
+      const img = qrBox.querySelector('img');
+      
       const a = document.createElement('a');
-      a.href = url;
       a.download = 'CodigoQR.png';
+
+      // La librería genera un canvas o una imagen (según compatibilidad)
+      if (canvas) {
+        a.href = canvas.toDataURL("image/png");
+      } else if (img) {
+        a.href = img.src;
+      } else {
+        return;
+      }
+      
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     };
 
-    // Iniciar iconos
     if (window.lucide) lucide.createIcons();
   </script>
 </body>
