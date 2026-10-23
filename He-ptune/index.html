@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Filtro de palabras ofensivas -->
-<script src="https://cdn.jsdelivr.net/npm/badfilter-js@2.0.0/dist/badword.min.js"></script>
+<!-- Librería de filtrado UMD -->
+<script src="https://cdn.jsdelivr.net/npm/censor-sensor@1.0.6/dist/index.umd.js"></script>
 <!-- Cliente de Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -142,18 +142,34 @@
 
   <script>
     // ==========================================
-    // ⚠️ CONFIGURACIÓN DE SUPABASE
+    // ✅ CONFIGURACIÓN DE SUPABASE (DATOS REALES)
     // ==========================================
-    const SUPABASE_URL = 'https://qcdbxudbgsnnszofdst.supabase.co'; 
-    const SUPABASE_KEY = 'sb_publishable_abk07...'; // REEMPLAZA ESTO CON TU CLAVE COMPLETA
+    const SUPABASE_URL = 'https://qcdbxudbgsnnszofdstw.supabase.co'; 
+    const SUPABASE_KEY = 'sb_publishable_abk07LpnHxDhxM3EDyiRJg_YQGV8pI1'; 
 
-    let supabase = null;
-    if (SUPABASE_KEY !== 'sb_publishable_abk07...') {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let supabaseClient = null;
+    
+    if (window.supabase) {
+      try {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      } catch(e) {
+        console.error("Error inicializando Supabase:", e);
+      }
     }
 
-    // Filtro de palabras
-    const filter = typeof Filter !== 'undefined' ? new Filter() : { clean: (t) => t };
+    // ==========================================
+    // FILTRO (Librería Censor-Sensor)
+    // ==========================================
+    let censor = null;
+    if (typeof CensorSensor !== 'undefined') {
+      censor = new CensorSensor();
+      censor.addLocale('es'); 
+    }
+
+    const filtrarTexto = (texto) => {
+      if (!censor) return texto;
+      return censor.cleanProfanity(texto);
+    };
 
     // ==========================================
     // VARIABLES Y ESTADO
@@ -180,8 +196,8 @@
     // INICIALIZACIÓN
     // ==========================================
     async function init() {
-      if (!supabase) {
-        document.getElementById('feed').innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px;">⚠️ Error: Debes configurar tu SUPABASE_KEY en el código.</div>';
+      if (!supabaseClient) {
+        document.getElementById('feed').innerHTML = '<div style="color:#ef4444; text-align:center; padding:20px; font-weight:600;">⚠️ Error de Conexión<br><br>Hubo un problema al conectar con Supabase. Revisa la consola (F12).</div>';
         return;
       }
 
@@ -210,10 +226,11 @@
             currentUser.name = `${perfil.nombre} ${perfil.apellido || ''}`.trim();
             currentUser.avatar = 'user';
 
-            const { data: existingProfile } = await supabase.from('profiles').select('*').eq('id', deviceId).single();
-            if (!existingProfile) {
-              await supabase.from('profiles').insert([{ id: deviceId, display_name: currentUser.name, avatar: currentUser.avatar }]);
-            } else {
+            const { data: existingProfile, error: fetchErr } = await supabaseClient.from('profiles').select('*').eq('id', deviceId).maybeSingle();
+            
+            if (!existingProfile && !fetchErr) {
+              await supabaseClient.from('profiles').insert([{ id: deviceId, display_name: currentUser.name, avatar: currentUser.avatar }]);
+            } else if (existingProfile) {
               currentUser.name = existingProfile.display_name;
               currentUser.avatar = existingProfile.avatar;
               if (existingProfile.ban_level > 0) {
@@ -246,50 +263,53 @@
     // CARGA DE DATOS Y RENDERIZADO
     // ==========================================
     async function loadFeed() {
+      if (!supabaseClient) return;
+
       const feedEl = document.getElementById('feed');
       feedEl.innerHTML = '<div style="text-align:center; color:var(--muted); padding:20px;">Cargando...</div>';
 
-      if (currentFeed === 'following') {
-        const { data: followsData } = await supabase.from('follows').select('following_id').eq('follower_id', currentUser.id);
-        followingIds = new Set(followsData ? followsData.map(f => f.following_id) : []);
-      }
-
-      let query = supabase.from('posts').select(`*, profiles:author_id (display_name, avatar)`)
-        .order('created_at', { ascending: false }).limit(30);
-
-      if (currentFeed === 'following' && followingIds.size > 0) {
-        query = query.in('author_id', Array.from(followingIds));
-      }
-
-      const { data: posts, error } = await query;
-      if (error) {
-        feedEl.innerHTML = `<div style="color:#ef4444; text-align:center; padding:20px;">Error: ${error.message}</div>`;
-        return;
-      }
-
-      const postIds = posts.map(p => p.id);
-      if (postIds.length > 0) {
-        const { data: reactions } = await supabase.from('reactions').select('*').eq('user_id', currentUser.id).in('post_id', postIds);
-        const { data: comments } = await supabase.from('comments').select('*').in('post_id', postIds);
-
-        userInteractions = {};
-        if (reactions) {
-          reactions.forEach(r => {
-            userInteractions[r.post_id] = { reaction: r.type, commented: false };
-          });
+      try {
+        if (currentFeed === 'following') {
+          const { data: followsData } = await supabaseClient.from('follows').select('following_id').eq('follower_id', currentUser.id);
+          followingIds = new Set(followsData ? followsData.map(f => f.following_id) : []);
         }
-        if (comments) {
-          comments.forEach(c => {
-            if (c.author_id === currentUser.id) {
-              if (!userInteractions[c.post_id]) userInteractions[c.post_id] = {};
-              userInteractions[c.post_id].commented = true;
-            }
-          });
-        }
-      }
 
-      allPosts = posts;
-      renderFeed();
+        let query = supabaseClient.from('posts').select(`*, profiles:author_id (display_name, avatar)`)
+          .order('created_at', { ascending: false }).limit(30);
+
+        if (currentFeed === 'following' && followingIds.size > 0) {
+          query = query.in('author_id', Array.from(followingIds));
+        }
+
+        const { data: posts, error } = await query;
+        if (error) throw error;
+
+        const postIds = posts.map(p => p.id);
+        if (postIds.length > 0) {
+          const { data: reactions } = await supabaseClient.from('reactions').select('*').eq('user_id', currentUser.id).in('post_id', postIds);
+          const { data: comments } = await supabaseClient.from('comments').select('*').in('post_id', postIds);
+
+          userInteractions = {};
+          if (reactions) {
+            reactions.forEach(r => {
+              userInteractions[r.post_id] = { reaction: r.type, commented: false };
+            });
+          }
+          if (comments) {
+            comments.forEach(c => {
+              if (c.author_id === currentUser.id) {
+                if (!userInteractions[c.post_id]) userInteractions[c.post_id] = {};
+                userInteractions[c.post_id].commented = true;
+              }
+            });
+          }
+        }
+
+        allPosts = posts;
+        renderFeed();
+      } catch (err) {
+        feedEl.innerHTML = `<div style="color:#ef4444; text-align:center; padding:20px;">Error al cargar: ${err.message}</div>`;
+      }
     }
 
     function renderFeed() {
@@ -352,12 +372,13 @@
     // ACCIONES
     // ==========================================
     window.react = async (postId, type) => {
+      if (!supabaseClient) return;
       const existing = userInteractions[postId]?.reaction;
       if (existing === type) {
-        await supabase.from('reactions').delete().eq('post_id', postId).eq('user_id', currentUser.id);
+        await supabaseClient.from('reactions').delete().eq('post_id', postId).eq('user_id', currentUser.id);
         userInteractions[postId].reaction = null;
       } else {
-        await supabase.from('reactions').upsert({ post_id: postId, user_id: currentUser.id, type: type });
+        await supabaseClient.from('reactions').upsert({ post_id: postId, user_id: currentUser.id, type: type });
         userInteractions[postId] = { ...userInteractions[postId], reaction: type };
       }
       renderFeed();
@@ -370,7 +391,8 @@
     };
 
     async function loadComments(postId) {
-      const { data: comments } = await supabase.from('comments').select(`*, profiles:author_id (display_name)`).eq('post_id', postId).order('created_at');
+      if (!supabaseClient) return;
+      const { data: comments } = await supabaseClient.from('comments').select(`*, profiles:author_id (display_name)`).eq('post_id', postId).order('created_at');
       const listEl = document.getElementById(`comment-list-${postId}`);
       if (listEl && comments) {
         listEl.innerHTML = comments.map(c => `<div class="comment"><strong>${escapeHtml(c.profiles.display_name)}</strong>: ${escapeHtml(c.content)}</div>`).join('');
@@ -378,13 +400,14 @@
     }
 
     window.submitComment = async (postId) => {
+      if (!supabaseClient) return;
       const input = document.getElementById(`comment-input-${postId}`);
       const text = input.value.trim();
       if (!text) return;
 
-      const cleanText = filter.clean(text);
+      const cleanText = filtrarTexto(text);
 
-      const { error } = await supabase.from('comments').insert([{ post_id: postId, author_id: currentUser.id, content: cleanText }]);
+      const { error } = await supabaseClient.from('comments').insert([{ post_id: postId, author_id: currentUser.id, content: cleanText }]);
       if (error) {
         alert('Error al comentar: ' + error.message);
       } else {
@@ -395,30 +418,31 @@
     };
 
     window.reportPost = async (targetId) => {
+      if (!supabaseClient) return;
       if (confirm('¿Reportar a este usuario? 6 reportes resultan en suspensión.')) {
-        await supabase.from('reports').insert([{ reporter_id: currentUser.id, target_type: 'user', target_id: targetId, reason: 'Contenido inapropiado' }]);
+        await supabaseClient.from('reports').insert([{ reporter_id: currentUser.id, target_type: 'user', target_id: targetId, reason: 'Contenido inapropiado' }]);
         alert('Reporte enviado. Gracias por ayudar a mantener la comunidad segura.');
       }
     };
 
     window.viewProfile = async (userId) => {
-      if (userId === currentUser.id) return;
-      const { data: isFollowing } = await supabase.from('follows').select('*').eq('follower_id', currentUser.id).eq('following_id', userId).single();
+      if (!supabaseClient || userId === currentUser.id) return;
+      const { data: isFollowing } = await supabaseClient.from('follows').select('*').eq('follower_id', currentUser.id).eq('following_id', userId).maybeSingle();
       if (isFollowing) {
         if (confirm('¿Dejar de seguir a este usuario?')) {
-          await supabase.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', userId);
+          await supabaseClient.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', userId);
           alert('Has dejado de seguir al usuario.');
         }
       } else {
         if (confirm('¿Seguir a este usuario?')) {
-          await supabase.from('follows').insert([{ follower_id: currentUser.id, following_id: userId }]);
+          await supabaseClient.from('follows').insert([{ follower_id: currentUser.id, following_id: userId }]);
           alert('Ahora sigues a este usuario.');
         }
       }
     };
 
     // ==========================================
-    // EVENTOS DE UI (Publicar, Perfil, Tabs)
+    // EVENTOS DE UI
     // ==========================================
     document.getElementById('post-input').addEventListener('input', (e) => {
       const len = e.target.value.length;
@@ -428,13 +452,14 @@
     });
 
     document.getElementById('btn-post').onclick = async () => {
+      if (!supabaseClient) return;
       const input = document.getElementById('post-input');
       let text = input.value.trim();
       if (!text) return;
 
-      const cleanText = filter.clean(text);
+      const cleanText = filtrarTexto(text);
 
-      const { error } = await supabase.from('posts').insert([{ author_id: currentUser.id, content: cleanText }]);
+      const { error } = await supabaseClient.from('posts').insert([{ author_id: currentUser.id, content: cleanText }]);
       if (error) {
         alert('Error al publicar: ' + error.message);
       } else {
@@ -467,10 +492,11 @@
     document.getElementById('btn-cancel-profile').onclick = () => document.getElementById('modal-profile').classList.remove('active');
 
     document.getElementById('btn-save-profile').onclick = async () => {
+      if (!supabaseClient) return;
       const newName = document.getElementById('profile-name').value.trim();
       if (!newName) return alert('El apodo no puede estar vacío.');
 
-      const { error } = await supabase.from('profiles').update({ display_name: newName, avatar: currentUser.avatar }).eq('id', currentUser.id);
+      const { error } = await supabaseClient.from('profiles').update({ display_name: newName, avatar: currentUser.avatar }).eq('id', currentUser.id);
       if (error) {
         alert('Error al guardar: ' + error.message);
       } else {
@@ -483,6 +509,7 @@
 
     document.querySelectorAll('.tab').forEach(tab => {
       tab.onclick = () => {
+        if (!supabaseClient) return;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         currentFeed = tab.dataset.feed;
