@@ -4,5 +4,8 @@
   "icono": "cloud-sun",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "El clima actual, por horas y por días"
+  "descripcion": "El clima actual, por horas y por días",
+  "widgets": [
+    { "file": "Widgets/Clim-He.html", "size": "2x1" }
+  ]
 }
