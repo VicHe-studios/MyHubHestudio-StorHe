@@ -4,5 +4,8 @@
   "icono": "image",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "Tu galería local. Soporta SVG, PNG, JPG y GIF."
+  "descripcion": "Tu galería local. Soporta SVG, PNG, JPG y GIF.",
+  "widgets": [
+    { "file": "Widgets/Galeria.html", "size": "2x2" }
+  ]
 }
