@@ -4,29 +4,32 @@
 <meta charset="utf-8">
 <style>
   :root {
-    --accent: #2563eb;
     --text: #0b1220;
-    --muted: #64748b;
+    --accent: #2563eb;
   }
   html[data-modo="oscuro"] {
     --text: #f4f4f6;
-    --muted: #9ea1aa;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    margin: 0; height: 100vh; width: 100vw;
+    display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     background: transparent; font-family: 'Segoe UI Variable', system-ui, sans-serif;
-    user-select: none;
+    user-select: none; overflow: hidden;
+    padding: 10px; /* Margen interno de seguridad */
   }
   .time {
-    font-size: 36px; font-weight: 800; line-height: 1;
-    letter-spacing: -1.5px; color: var(--text);
+    font-size: 26px; /* Tamaño ajustado para que quepa en 90x100 */
+    font-weight: 800; line-height: 1;
+    letter-spacing: -0.5px; 
+    color: var(--text);
     font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
   }
   .date {
-    font-size: 11px; font-weight: 600; color: var(--accent);
-    text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;
+    font-size: 10px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px;
   }
 </style>
 </head>
@@ -45,13 +48,15 @@
 
   const updateClock = () => {
     const now = new Date();
+    // Hora en formato HH:MM
     document.getElementById('time').textContent = now.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    // Día de la semana y número de día
+    const dias = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
     document.getElementById('date').textContent = `${dias[now.getDay()]} ${now.getDate()}`;
   };
   
   updateClock();
-  setInterval(updateClock, 1000); // Se actualiza cada segundo
+  setInterval(updateClock, 1000);
 </script>
 </body>
 </html>
