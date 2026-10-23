@@ -16,6 +16,7 @@
     --field: #f6f8fb;
     --sidebar-bg: #f1f5f9;
     --editor-bg: #1e1e1e;
+    --sidebar-width: 220px;
   }
   
   html[data-modo="oscuro"] {
@@ -35,14 +36,26 @@
     overflow: hidden;
   }
 
+  /* ===== TOPBAR ===== */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
     padding: 8px 16px; border-bottom: 1px solid var(--line);
     background: var(--card); flex-shrink: 0; z-index: 10;
   }
+  .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .topbar-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
   .topbar-title svg { color: var(--accent); width: 18px; height: 18px; }
-  
+
+  /* NUEVO: Botón de toggle del sidebar */
+  .btn-toggle-sidebar {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    width: 32px; height: 32px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s, color 0.2s; flex-shrink: 0;
+  }
+  .btn-toggle-sidebar:hover { background: var(--field); color: var(--text); }
+  .btn-toggle-sidebar svg { width: 18px; height: 18px; }
+
   .btn-export {
     background: var(--accent); color: #fff; border: none; padding: 6px 14px;
     border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer;
@@ -53,9 +66,23 @@
 
   .main-layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
+  /* ===== SIDEBAR (ahora colapsable) ===== */
   .sidebar {
-    width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--line);
-    display: flex; flex-direction: column; flex-shrink: 0; color: var(--text);
+    width: var(--sidebar-width);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; flex-shrink: 0;
+    background: var(--sidebar-bg); color: var(--text);
+    overflow: hidden;
+    transition: width 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  }
+  .sidebar.collapsed {
+    width: 0;
+    border-right-width: 0;
+  }
+  .sidebar-inner {
+    width: var(--sidebar-width);
+    display: flex; flex-direction: column; height: 100%;
+    flex-shrink: 0;
   }
   
   .sidebar-header {
@@ -134,14 +161,26 @@
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); border-radius: 4px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar { transition-duration: 0.01ms; }
+  }
 </style>
 </head>
 <body>
 
   <div class="topbar">
-    <div class="topbar-title">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
-      Cod-He
+    <div class="topbar-left">
+      <button class="btn-toggle-sidebar" id="btn-toggle-sidebar" title="Mostrar/Ocultar explorador">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+        </svg>
+      </button>
+      <div class="topbar-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        Cod-He
+      </div>
     </div>
     <button class="btn-export" id="btn-export">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -150,19 +189,21 @@
   </div>
 
   <div class="main-layout">
-    <div class="sidebar">
-      <div class="sidebar-header">
-        Explorador
-        <div class="sidebar-actions">
-          <button class="btn-icon" id="btn-new-file" title="Nuevo Archivo (se crea en la carpeta seleccionada)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-          </button>
-          <button class="btn-icon" id="btn-new-folder" title="Nueva Carpeta">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
-          </button>
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-header">
+          Explorador
+          <div class="sidebar-actions">
+            <button class="btn-icon" id="btn-new-file" title="Nuevo Archivo (se crea en la carpeta seleccionada)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            </button>
+            <button class="btn-icon" id="btn-new-folder" title="Nueva Carpeta">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+            </button>
+          </div>
         </div>
+        <div class="file-tree" id="file-tree"></div>
       </div>
-      <div class="file-tree" id="file-tree"></div>
     </div>
 
     <div class="editor-area">
@@ -181,7 +222,6 @@
     <div class="status-right">
       <span id="status-lang">Texto plano</span>
       <span id="status-pos">Ln 1, Col 1</span>
-      <!-- CRÉDITOS INTEGRADOS AQUÍ -->
       <span style="opacity: 0.8; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 16px; display: flex; gap: 4px;">
         Motor: <a href="https://ace.c9.io/" target="_blank" style="color: #fff; text-decoration: underline; font-weight: 600;">Ace</a> • 
         ZIP: <a href="https://stuk.github.io/jszip/" target="_blank" style="color: #fff; text-decoration: underline; font-weight: 600;">JSZip</a>
@@ -189,7 +229,7 @@
     </div>
   </div>
 
-  <!-- Modal para crear/renombrar -->
+  <!-- Modal para crear/renombrar/prompt genérico -->
   <div class="modal-overlay" id="modal-prompt">
     <div class="modal">
       <h3 id="modal-title">Nuevo Archivo</h3>
@@ -296,6 +336,7 @@
   const emptyState = document.getElementById('empty-state');
   const statusFile = document.getElementById('status-file');
   const statusLang = document.getElementById('status-lang');
+  const sidebarEl = document.getElementById('sidebar');
 
   const saveToStorage = () => localStorage.setItem('codhe_files_v3', JSON.stringify(files));
 
@@ -396,15 +437,23 @@
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // Modales
+  // ===== NUEVO: Toggle del sidebar =====
+  document.getElementById('btn-toggle-sidebar').onclick = () => {
+    sidebarEl.classList.toggle('collapsed');
+    // Tras la animación, resize del editor para que Ace recalcule bien
+    setTimeout(() => editor.resize(), 320);
+  };
+
+  // ===== Modales =====
   const modalPrompt = document.getElementById('modal-prompt');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
   let promptCallback = null;
 
-  const showPrompt = (title, defaultValue, callback) => {
+  const showPrompt = (title, defaultValue, callback, placeholder = '') => {
     modalTitle.textContent = title;
     modalInput.value = defaultValue;
+    modalInput.placeholder = placeholder || 'Nombre...';
     promptCallback = callback;
     modalPrompt.classList.add('active');
     setTimeout(() => modalInput.focus(), 50);
@@ -521,33 +570,48 @@
     renderTree();
   };
 
-  document.getElementById('btn-export').onclick = async () => {
+  // ===== NUEVO: Exportar con nombre personalizado =====
+  document.getElementById('btn-export').onclick = () => {
     if (files.length <= 1) return alert('No hay archivos para exportar.');
-    const zip = new JSZip();
 
-    const getFullPath = (fileId) => {
-      let path = [];
-      let current = files.find(f => f.id === fileId);
-      while (current && current.id !== 'root') {
-        path.unshift(current.name);
-        current = files.find(f => f.id === current.parent);
-      }
-      return path.join('/');
-    };
+    showPrompt(
+      'Exportar Proyecto',
+      '',
+      async (customName) => {
+        const zip = new JSZip();
 
-    files.forEach(f => {
-      if (f.type === 'file') zip.file(getFullPath(f.id), f.content || '');
-    });
+        const getFullPath = (fileId) => {
+          let path = [];
+          let current = files.find(f => f.id === fileId);
+          while (current && current.id !== 'root') {
+            path.unshift(current.name);
+            current = files.find(f => f.id === current.parent);
+          }
+          return path.join('/');
+        };
 
-    try {
-      const blob = await zip.generateAsync({ type: 'blob' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `CodHe_Project_${Date.now()}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) { alert('Error al generar el ZIP'); }
+        files.forEach(f => {
+          if (f.type === 'file') zip.file(getFullPath(f.id), f.content || '');
+        });
+
+        try {
+          const blob = await zip.generateAsync({ type: 'blob' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+
+          // Nombre final: usar el del usuario o el default timestamped
+          const baseName = (customName && customName.trim()) ? customName.trim() : `CodHe_Project_${Date.now()}`;
+          a.download = baseName.toLowerCase().endsWith('.zip') ? baseName : `${baseName}.zip`;
+
+          a.click();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          alert('Error al generar el ZIP');
+        }
+      },
+      'Opcional — vacío = nombre automático'
+    );
   };
 
   renderTree();
