@@ -282,7 +282,8 @@
   let activeFolderId = 'root';
 
   try {
-    const stored = localStorage.getItem('codhe_files_v3');
+    // Cambiado a v4 para forzar la recarga del ejemplo limpio
+    const stored = localStorage.getItem('codhe_files_v4');
     if (stored) files = JSON.parse(stored);
   } catch(e) { files = []; }
 
@@ -407,7 +408,7 @@
   };
   actualizar();
   setInterval(actualizar, 1000);
-</script>
+<\/script>
 </body>
 </html>`
       }
@@ -420,7 +421,8 @@
   const statusLang = document.getElementById('status-lang');
   const sidebarEl = document.getElementById('sidebar');
 
-  const saveToStorage = () => localStorage.setItem('codhe_files_v3', JSON.stringify(files));
+  // Cambiado a v4
+  const saveToStorage = () => localStorage.setItem('codhe_files_v4', JSON.stringify(files));
 
   const getLanguage = (filename) => {
     if (!filename) return 'text';
