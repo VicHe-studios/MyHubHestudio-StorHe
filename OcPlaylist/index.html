@@ -51,6 +51,7 @@
 
   svg{ display:block; width:16px; height:16px; flex:0 0 auto; }
 
+  /* Scrollbar Global */
   ::-webkit-scrollbar{ width:8px; height:8px; }
   ::-webkit-scrollbar-thumb{ background:rgba(128,128,128,.35); border-radius:8px; }
   ::-webkit-scrollbar-thumb:hover{ background:rgba(128,128,128,.55); }
@@ -75,9 +76,12 @@
     display:flex; gap:12px; padding:12px 14px; flex:0 0 auto;
     overflow-x:auto; overflow-y:hidden;
     border-bottom:1px solid var(--line-c);
-    scrollbar-width:thin;
   }
+  /* Scrollbar horizontal específica para los personajes */
   .chars::-webkit-scrollbar{ height:6px; }
+  .chars::-webkit-scrollbar-track{ background:transparent; }
+  .chars::-webkit-scrollbar-thumb{ background:rgba(128,128,128,.35); border-radius:8px; }
+  .chars::-webkit-scrollbar-thumb:hover{ background:rgba(128,128,128,.55); }
 
   .char{
     flex:0 0 auto; width:70px; display:flex; flex-direction:column;
