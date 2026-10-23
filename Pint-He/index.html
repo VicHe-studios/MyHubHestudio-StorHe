@@ -68,15 +68,17 @@
   .swatch:hover { transform: scale(1.1); }
   .swatch.active { border-color: var(--text); box-shadow: 0 0 0 1px var(--card) inset; }
   
-  /* Colores fijos */
-  .c-blue { background: #2563eb; }
-  .c-sky { background: #0ea5e9; }
-  .c-red { background: #dc2626; }
-  .c-green { background: #16a34a; }
+  /* Colores fijos — paleta oficial del sistema MyHubHestudio */
+  .c-blue   { background: #2563eb; }
+  .c-sky    { background: #0ea5e9; }
+  .c-red    { background: #dc2626; }
+  .c-green  { background: #16a34a; }
   .c-purple { background: #7c3aed; }
   .c-yellow { background: #ca8a04; }
-  .c-black { background: #0b1220; }
-  .c-white { background: #ffffff; border-color: var(--line); }
+  .c-black  { background: #0b1220; }
+  .c-white  { background: #ffffff; border-color: var(--line); }
+  .c-pink   { background: #ec4899; }
+  .c-brown  { background: #8b4513; }
 
   input[type="range"] { width: 60px; accent-color: var(--accent); }
 
@@ -138,16 +140,18 @@
 
     <div class="divider"></div>
 
-    <!-- Paleta de colores fija del S.O. -->
+    <!-- Paleta de colores fija del S.O. (10 colores: 8 originales + café + rosado) -->
     <div class="tool-group palette">
-      <div class="swatch c-black" data-color="#0b1220" title="Negro"></div>
-      <div class="swatch c-white" data-color="#ffffff" title="Blanco"></div>
+      <div class="swatch c-black"  data-color="#0b1220" title="Negro"></div>
+      <div class="swatch c-white"  data-color="#ffffff" title="Blanco"></div>
       <div class="swatch c-blue active" data-color="#2563eb" title="Azul"></div>
-      <div class="swatch c-sky" data-color="#0ea5e9" title="Celeste"></div>
-      <div class="swatch c-red" data-color="#dc2626" title="Rojo"></div>
-      <div class="swatch c-green" data-color="#16a34a" title="Verde"></div>
+      <div class="swatch c-sky"    data-color="#0ea5e9" title="Celeste"></div>
+      <div class="swatch c-red"    data-color="#dc2626" title="Rojo"></div>
+      <div class="swatch c-green"  data-color="#16a34a" title="Verde"></div>
       <div class="swatch c-purple" data-color="#7c3aed" title="Morado"></div>
       <div class="swatch c-yellow" data-color="#ca8a04" title="Amarillo"></div>
+      <div class="swatch c-pink"   data-color="#ec4899" title="Rosado"></div>
+      <div class="swatch c-brown"  data-color="#8b4513" title="Café"></div>
     </div>
 
     <div class="tool-group">
