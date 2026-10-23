@@ -3,7 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root {
@@ -30,16 +29,21 @@
     background: var(--card); color: var(--text);
   }
 
+  /* Scrollbar Estilizada */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
   .header {
-    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
     background: var(--card); flex-shrink: 0;
     display: flex; align-items: center; justify-content: space-between;
     gap: 10px; z-index: 1000;
   }
-  .header-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
-  .header-left svg { width: 18px; height: 18px; color: var(--accent); }
+  .header-left { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+  .header-left svg { width: 16px; height: 16px; color: var(--accent); }
   
-  .search-box { display: flex; flex: 1; gap: 8px; max-width: 300px; }
+  .search-box { display: flex; flex: 1; gap: 6px; max-width: 250px; }
   .search-box input {
     flex: 1; padding: 6px 10px; border-radius: 8px; border: 1.5px solid var(--line);
     background: var(--field); color: var(--text); font-size: 12px; outline: none;
@@ -49,22 +53,26 @@
   .btn {
     background: var(--accent); color: #fff; border: none; padding: 6px 10px;
     border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: 0.2s;
   }
   .btn:hover { filter: brightness(1.1); }
   .btn svg { width: 14px; height: 14px; }
 
   #map { flex: 1; width: 100%; z-index: 1; background: var(--field); }
 
-  /* Modo Oscuro para el Mapa (Filtro CSS) */
-  html[data-modo="oscuro"] .leaflet-layer,
-  html[data-modo="oscuro"] .leaflet-control-zoom-in,
-  html[data-modo="oscuro"] .leaflet-control-zoom-out,
-  html[data-modo="oscuro"] .leaflet-control-attribution {
-    filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.2);
-  }
-  html[data-modo="oscuro"] .leaflet-container { background: #222227; }
+  /* Leaflet Dark Mode fixes */
   html[data-modo="oscuro"] .leaflet-popup-content-wrapper, 
-  html[data-modo="oscuro"] .leaflet-popup-tip { background: var(--card); color: var(--text); }
+  html[data-modo="oscuro"] .leaflet-popup-tip { 
+    background: var(--card); color: var(--text); 
+  }
+  html[data-modo="oscuro"] .leaflet-container { background: #1a1a1a; }
+  html[data-modo="oscuro"] .leaflet-control-zoom a {
+    background-color: var(--card); color: var(--text); border-color: var(--line);
+  }
+  html[data-modo="oscuro"] .leaflet-control-attribution {
+    background: var(--card) !important; color: var(--muted) !important;
+  }
+  html[data-modo="oscuro"] .leaflet-control-attribution a { color: var(--accent) !important; }
 
   .app-credit {
     text-align: center; font-size: 11px; color: var(--muted); padding: 6px;
@@ -78,12 +86,17 @@
 
   <div class="header">
     <div class="header-left">
-      <i data-lucide="map"></i> Map-He
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>
+      Map-He
     </div>
     <div class="search-box">
       <input type="text" id="search-input" placeholder="Buscar lugar..." autocomplete="off">
-      <button class="btn" id="btn-search"><i data-lucide="search"></i></button>
-      <button class="btn" id="btn-locate" title="Mi ubicación"><i data-lucide="crosshair"></i></button>
+      <button class="btn" id="btn-search" title="Buscar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      </button>
+      <button class="btn" id="btn-locate" title="Mi ubicación">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
     </div>
   </div>
 
@@ -93,32 +106,46 @@
     Mapas por <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> y <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
   </div>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="../../vendor/lucide.min.js"></script>
   <script>
     if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+    
+    let map;
+    let tileLayer;
+    let marker = null;
+
+    // Inicializar Mapa
+    map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Función para cambiar las capas del mapa según el tema
+    const setMapTheme = (modo) => {
+      if (tileLayer) map.removeLayer(tileLayer);
+      
+      const isDark = modo === 'oscuro';
+      const url = isDark 
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        
+      tileLayer = L.tileLayer(url, {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors © CARTO'
+      }).addTo(map);
+    };
+
+    // Iniciar en claro por defecto
+    setMapTheme('claro');
+
+    // Escuchar cambios de tema
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'myhub:tema:res') {
         document.documentElement.dataset.modo = e.data.modo;
         document.documentElement.style.setProperty('--accent', e.data.color);
         document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+        setMapTheme(e.data.modo);
       }
     });
 
-    // Inicializar Mapa (Centrado en una vista global)
-    const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    // Cargar TileLayer (OpenStreetMap)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-
-    let marker = null;
-
-    // Función para mostrar un marcador
     const setMarker = (lat, lon, title) => {
       if (marker) map.removeLayer(marker);
       marker = L.marker([lat, lon]).addTo(map);
@@ -126,7 +153,6 @@
       map.setView([lat, lon], 13);
     };
 
-    // Búsqueda usando Nominatim API (Gratuita)
     const searchPlace = async () => {
       const query = document.getElementById('search-input').value.trim();
       if (!query) return;
@@ -151,7 +177,6 @@
       if (e.key === 'Enter') searchPlace();
     });
 
-    // Geolocalización
     document.getElementById('btn-locate').onclick = () => {
       if (!navigator.geolocation) {
         return alert('La geolocalización no está soportada por tu navegador.');
@@ -163,12 +188,10 @@
           setMarker(latitude, longitude, "¡Estás aquí!");
         },
         () => {
-          alert('No se pudo obtener tu ubicación. Verifica los permisos del navegador.');
+          alert('No se pudo obtener tu ubicación. Verifica los permisos.');
         }
       );
     };
-
-    if (window.lucide) lucide.createIcons();
   </script>
 </body>
 </html>
