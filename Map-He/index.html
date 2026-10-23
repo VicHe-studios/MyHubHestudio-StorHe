@@ -60,7 +60,7 @@
 
   #map { flex: 1; width: 100%; z-index: 1; background: var(--field); }
 
-  /* Leaflet Dark Mode fixes */
+  /* Leaflet Dark Mode fixes (Para que los controles se vean bien) */
   html[data-modo="oscuro"] .leaflet-popup-content-wrapper, 
   html[data-modo="oscuro"] .leaflet-popup-tip { 
     background: var(--card); color: var(--text); 
@@ -103,7 +103,7 @@
   <div id="map"></div>
 
   <div class="app-credit">
-    Mapas por <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> y <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+    Mapas por <a href="https://www.esri.com/" target="_blank">Esri</a> y <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -118,18 +118,20 @@
     map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Función para cambiar las capas del mapa según el tema
+    // Función para cambiar las capas del mapa según el tema (Esri Canvas - NO API KEY)
     const setMapTheme = (modo) => {
       if (tileLayer) map.removeLayer(tileLayer);
       
       const isDark = modo === 'oscuro';
+      
+      // Esri World Canvas (Light / Dark) - Completamente gratis, sin API Key
       const url = isDark 
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
         
       tileLayer = L.tileLayer(url, {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors © CARTO'
+        maxZoom: 16,
+        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
       }).addTo(map);
     };
 
