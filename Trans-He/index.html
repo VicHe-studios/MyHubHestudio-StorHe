@@ -28,57 +28,63 @@
     background: var(--card); color: var(--text);
   }
 
+  /* Scrollbar Estilizada */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
   .header {
     padding: 12px 16px; border-bottom: 1px solid var(--line);
     background: var(--card); flex-shrink: 0;
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; gap: 10px;
   }
-  .header h1 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .header h1 svg { color: var(--accent); width: 18px; height: 18px; }
+  .header h1 { margin: 0; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .header h1 svg { color: var(--accent); width: 16px; height: 16px; }
 
   .content {
     flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px; overflow-y: auto;
   }
 
-  .lang-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .lang-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   
   select {
-    flex: 1; padding: 8px 10px; border-radius: 8px; border: 1.5px solid var(--line);
-    background: var(--field); color: var(--text); font: inherit; font-size: 13px; font-weight: 600;
+    flex: 1; padding: 8px; border-radius: 8px; border: 1.5px solid var(--line);
+    background: var(--field); color: var(--text); font: inherit; font-size: 12px; font-weight: 600;
     outline: none; cursor: pointer; appearance: none; text-align: center;
   }
   select:focus { border-color: var(--accent); }
 
   .btn-swap {
     background: var(--field); border: 1.5px solid var(--line); color: var(--muted);
-    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: 0.2s; flex-shrink: 0;
   }
-  .btn-swap:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); transform: rotate(180deg); }
-  .btn-swap svg { width: 16px; height: 16px; }
+  .btn-swap:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); transform: scale(1.05); }
+  .btn-swap svg { width: 14px; height: 14px; }
 
   .panel {
-    flex: 1; display: flex; flex-direction: column; position: relative; min-height: 120px;
+    flex: 1; display: flex; flex-direction: column; position: relative; min-height: 100px;
   }
   textarea {
     width: 100%; height: 100%; resize: none; padding: 12px;
     border-radius: 12px; border: 1.5px solid var(--line);
-    background: var(--field); color: var(--text); font: inherit; font-size: 14px;
+    background: var(--field); color: var(--text); font: inherit; font-size: 13px;
     outline: none; transition: border-color 0.2s;
   }
   textarea:focus { border-color: var(--accent); }
-  textarea[readonly] { background: var(--card); color: var(--muted); }
+  textarea[readonly] { background: var(--card); color: var(--muted); cursor: default; }
 
   .actions { display: flex; justify-content: center; margin-top: 4px; }
   .btn-primary {
-    background: var(--accent); color: #fff; border: none; padding: 10px 24px;
-    border-radius: 10px; font: inherit; font-size: 14px; font-weight: 600;
+    background: var(--accent); color: #fff; border: none; padding: 8px 20px;
+    border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600;
     cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px;
   }
   .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
   .btn-primary:active { transform: scale(0.97); }
   .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .btn-primary svg { width: 16px; height: 16px; }
+  .btn-primary svg { width: 14px; height: 14px; }
 
   .app-credit {
     text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
@@ -93,7 +99,10 @@
 <body>
 
   <div class="header">
-    <h1><i data-lucide="languages"></i> Trans-He</h1>
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+      Trans-He
+    </h1>
   </div>
 
   <div class="content">
@@ -110,7 +119,7 @@
         <option value="ru">Ruso</option>
       </select>
       <button class="btn-swap" id="btn-swap" title="Intercambiar idiomas">
-        <i data-lucide="arrow-right-left"></i>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
       </button>
       <select id="lang-tgt">
         <option value="es" selected>Español</option>
@@ -131,7 +140,8 @@
 
     <div class="actions">
       <button class="btn-primary" id="btn-translate">
-        <i data-lucide="sparkles"></i> Traducir
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+        Traducir
       </button>
     </div>
 
@@ -144,7 +154,6 @@
     Traducción por <a href="https://mymemory.translated.net/" target="_blank">MyMemory API</a>
   </div>
 
-  <script src="../../vendor/lucide.min.js"></script>
   <script>
     if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
     window.addEventListener('message', (e) => {
@@ -173,13 +182,11 @@
         return;
       }
 
-      // Estado de carga
       btnTranslate.disabled = true;
-      btnTranslate.innerHTML = `<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Traduciendo...`;
+      btnTranslate.innerHTML = `<svg class="spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Traduciendo...`;
       textTgt.value = '';
 
       try {
-        // Usamos la API pública de MyMemory
         const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${src}|${tgt}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -193,32 +200,26 @@
         textTgt.value = "Error de conexión. Revisa tu internet.";
       } finally {
         btnTranslate.disabled = false;
-        btnTranslate.innerHTML = `<i data-lucide="sparkles"></i> Traducir`;
-        if (window.lucide) lucide.createIcons();
+        btnTranslate.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg> Traducir`;
       }
     };
 
     btnTranslate.onclick = translate;
 
-    // Atajo: Ctrl + Enter para traducir
     textSrc.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === 'Enter') translate();
     });
 
-    // Intercambiar idiomas
     document.getElementById('btn-swap').onclick = () => {
       const temp = langSrc.value;
       langSrc.value = langTgt.value;
       langTgt.value = temp;
       
-      // Si ya hay un texto traducido, lo movemos al panel de origen
       if (textTgt.value.trim()) {
         textSrc.value = textTgt.value;
         textTgt.value = '';
       }
     };
-
-    if (window.lucide) lucide.createIcons();
   </script>
 </body>
 </html>
