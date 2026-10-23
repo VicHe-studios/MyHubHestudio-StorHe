@@ -1,0 +1,8 @@
+{
+  "id": "trans-he",
+  "titulo": "Trans-He",
+  "icono": "languages",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Traduce texto al instante entre múltiples idiomas"
+}
