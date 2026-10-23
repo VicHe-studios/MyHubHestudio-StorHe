@@ -46,7 +46,6 @@
   .topbar-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
   .topbar-title svg { color: var(--accent); width: 18px; height: 18px; }
 
-  /* NUEVO: Botón de toggle del sidebar */
   .btn-toggle-sidebar {
     background: transparent; border: none; color: var(--muted); cursor: pointer;
     width: 32px; height: 32px; border-radius: 6px;
@@ -66,7 +65,6 @@
 
   .main-layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 
-  /* ===== SIDEBAR (ahora colapsable) ===== */
   .sidebar {
     width: var(--sidebar-width);
     border-right: 1px solid var(--line);
@@ -136,7 +134,6 @@
   }
   .empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
 
-  /* Modales */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
     display: none; align-items: center; justify-content: center; z-index: 9999;
@@ -229,7 +226,6 @@
     </div>
   </div>
 
-  <!-- Modal para crear/renombrar/prompt genérico -->
   <div class="modal-overlay" id="modal-prompt">
     <div class="modal">
       <h3 id="modal-title">Nuevo Archivo</h3>
@@ -241,7 +237,6 @@
     </div>
   </div>
 
-  <!-- Modal para mover archivo -->
   <div class="modal-overlay" id="modal-move">
     <div class="modal">
       <h3>Mover Archivo</h3>
@@ -315,6 +310,9 @@
 <body>
   <h1>¡Hola MyHub!</h1>
   <p>Tu app está lista para despegar.</p>
+  <p style="font-size:12px; color:var(--muted); margin-top:8px;">
+    Este proyecto incluye un widget de ejemplo en <code>widgets/reloj.html</code>
+  </p>
 </body>
 </html>` 
       },
@@ -326,8 +324,92 @@
   "icono": "box",
   "main": "index.html",
   "autor": "Tu Nombre",
-  "descripcion": "Una app increíble para MyHub"
+  "descripcion": "Una app increíble con widget de ejemplo",
+  "widgets": [
+    { "file": "widgets/reloj.html", "size": "2x1" }
+  ]
 }` 
+      },
+      { id: 'fw', parent: 'root', name: 'widgets', type: 'folder' },
+      {
+        id: 'f3', parent: 'fw', name: 'reloj.html', type: 'file',
+        content: `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  /* === ADN MyHub: variables de color y modo oscuro === */
+  :root {
+    --accent: #2563eb;
+    --text: #0b1220;
+    --muted: #64748b;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100vh; width: 100%; margin: 0; overflow: hidden;
+  }
+  body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+    color: var(--text);
+    background: transparent; /* el lobby ya aplica el efecto glass */
+    padding: 12px;
+  }
+
+  .hora {
+    font-size: 42px; font-weight: 700;
+    letter-spacing: -0.03em; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .fecha {
+    font-size: 12px; color: var(--muted);
+    margin-top: 6px; text-transform: capitalize;
+    text-align: center; max-width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .barra {
+    width: 32px; height: 3px; background: var(--accent);
+    border-radius: 2px; margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+  <div class="hora" id="hora">--:--</div>
+  <div class="fecha" id="fecha">Cargando…</div>
+  <div class="barra"></div>
+
+<script>
+  // === Sincronización de tema (obligatorio en MyHub) ===
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  }
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+    }
+  });
+
+  // === Reloj ===
+  const actualizar = () => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    document.getElementById('hora').textContent = hh + ':' + mm;
+    document.getElementById('fecha').textContent =
+      now.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
+  };
+  actualizar();
+  setInterval(actualizar, 1000);
+</script>
+</body>
+</html>`
       }
     ];
   }
@@ -437,14 +519,11 @@
 
   const generateId = () => Math.random().toString(36).substr(2, 9);
 
-  // ===== NUEVO: Toggle del sidebar =====
   document.getElementById('btn-toggle-sidebar').onclick = () => {
     sidebarEl.classList.toggle('collapsed');
-    // Tras la animación, resize del editor para que Ace recalcule bien
     setTimeout(() => editor.resize(), 320);
   };
 
-  // ===== Modales =====
   const modalPrompt = document.getElementById('modal-prompt');
   const modalTitle = document.getElementById('modal-title');
   const modalInput = document.getElementById('modal-input');
@@ -468,7 +547,6 @@
     if (e.key === 'Enter') document.getElementById('btn-prompt-save').click();
   };
 
-  // Modal de mover
   const modalMove = document.getElementById('modal-move');
   const moveSelect = document.getElementById('move-select');
   let moveFileId = null;
@@ -505,7 +583,6 @@
     modalMove.classList.remove('active');
   };
 
-  // Botones de creación
   document.getElementById('btn-new-file').onclick = () => {
     showPrompt('Nuevo Archivo', 'archivo.txt', (name) => {
       if (!name) return;
@@ -570,7 +647,6 @@
     renderTree();
   };
 
-  // ===== NUEVO: Exportar con nombre personalizado =====
   document.getElementById('btn-export').onclick = () => {
     if (files.length <= 1) return alert('No hay archivos para exportar.');
 
@@ -600,7 +676,6 @@
           const a = document.createElement('a');
           a.href = url;
 
-          // Nombre final: usar el del usuario o el default timestamped
           const baseName = (customName && customName.trim()) ? customName.trim() : `CodHe_Project_${Date.now()}`;
           a.download = baseName.toLowerCase().endsWith('.zip') ? baseName : `${baseName}.zip`;
 
