@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --accent: #2563eb;
+    --text: #0b1220;
+    --muted: #64748b;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: transparent; font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    user-select: none;
+  }
+  .time {
+    font-size: 36px; font-weight: 800; line-height: 1;
+    letter-spacing: -1.5px; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .date {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+  <div class="time" id="time">--:--</div>
+  <div class="date" id="date">---</div>
+
+<script>
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+    }
+  });
+
+  const updateClock = () => {
+    const now = new Date();
+    document.getElementById('time').textContent = now.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    document.getElementById('date').textContent = `${dias[now.getDay()]} ${now.getDate()}`;
+  };
+  
+  updateClock();
+  setInterval(updateClock, 1000); // Se actualiza cada segundo
+</script>
+</body>
+</html>
