@@ -4,5 +4,8 @@
   "icono": "clock",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "Reloj, cronómetro y temporizador"
+  "descripcion": "Reloj, cronómetro y temporizador",
+  "widgets": [
+    { "file": "Widgets/Reloj.html", "size": "1x1" }
+  ]
 }
