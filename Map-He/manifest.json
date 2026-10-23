@@ -1,0 +1,8 @@
+{
+  "id": "map-he",
+  "titulo": "Map-He",
+  "icono": "map",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Explora mapas y busca lugares del mundo"
+}
