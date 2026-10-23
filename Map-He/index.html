@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100vh; width: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+  }
+
+  .header {
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; z-index: 1000;
+  }
+  .header-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .header-left svg { width: 18px; height: 18px; color: var(--accent); }
+  
+  .search-box { display: flex; flex: 1; gap: 8px; max-width: 300px; }
+  .search-box input {
+    flex: 1; padding: 6px 10px; border-radius: 8px; border: 1.5px solid var(--line);
+    background: var(--field); color: var(--text); font-size: 12px; outline: none;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  
+  .btn {
+    background: var(--accent); color: #fff; border: none; padding: 6px 10px;
+    border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn svg { width: 14px; height: 14px; }
+
+  #map { flex: 1; width: 100%; z-index: 1; background: var(--field); }
+
+  /* Modo Oscuro para el Mapa (Filtro CSS) */
+  html[data-modo="oscuro"] .leaflet-layer,
+  html[data-modo="oscuro"] .leaflet-control-zoom-in,
+  html[data-modo="oscuro"] .leaflet-control-zoom-out,
+  html[data-modo="oscuro"] .leaflet-control-attribution {
+    filter: invert(1) hue-rotate(180deg) brightness(0.8) contrast(1.2);
+  }
+  html[data-modo="oscuro"] .leaflet-container { background: #222227; }
+  html[data-modo="oscuro"] .leaflet-popup-content-wrapper, 
+  html[data-modo="oscuro"] .leaflet-popup-tip { background: var(--card); color: var(--text); }
+
+  .app-credit {
+    text-align: center; font-size: 11px; color: var(--muted); padding: 6px;
+    border-top: 1px solid var(--line); background: var(--card); flex-shrink: 0;
+    z-index: 1000;
+  }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <i data-lucide="map"></i> Map-He
+    </div>
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="Buscar lugar..." autocomplete="off">
+      <button class="btn" id="btn-search"><i data-lucide="search"></i></button>
+      <button class="btn" id="btn-locate" title="Mi ubicación"><i data-lucide="crosshair"></i></button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="app-credit">
+    Mapas por <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a> y <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="../../vendor/lucide.min.js"></script>
+  <script>
+    if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'myhub:tema:res') {
+        document.documentElement.dataset.modo = e.data.modo;
+        document.documentElement.style.setProperty('--accent', e.data.color);
+        document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+      }
+    });
+
+    // Inicializar Mapa (Centrado en una vista global)
+    const map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Cargar TileLayer (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    let marker = null;
+
+    // Función para mostrar un marcador
+    const setMarker = (lat, lon, title) => {
+      if (marker) map.removeLayer(marker);
+      marker = L.marker([lat, lon]).addTo(map);
+      if (title) marker.bindPopup(title).openPopup();
+      map.setView([lat, lon], 13);
+    };
+
+    // Búsqueda usando Nominatim API (Gratuita)
+    const searchPlace = async () => {
+      const query = document.getElementById('search-input').value.trim();
+      if (!query) return;
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        
+        if (data && data.length > 0) {
+          const place = data[0];
+          setMarker(place.lat, place.lon, place.display_name);
+        } else {
+          alert('No se encontraron resultados para esa búsqueda.');
+        }
+      } catch (err) {
+        alert('Error al conectar con el servicio de mapas.');
+      }
+    };
+
+    document.getElementById('btn-search').onclick = searchPlace;
+    document.getElementById('search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchPlace();
+    });
+
+    // Geolocalización
+    document.getElementById('btn-locate').onclick = () => {
+      if (!navigator.geolocation) {
+        return alert('La geolocalización no está soportada por tu navegador.');
+      }
+      
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setMarker(latitude, longitude, "¡Estás aquí!");
+        },
+        () => {
+          alert('No se pudo obtener tu ubicación. Verifica los permisos del navegador.');
+        }
+      );
+    };
+
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>
