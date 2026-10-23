@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  /* Variables base en caso de que falle el postMessage */
+  :root {
+    --accent: #2563eb;
+    --text: #0b1220;
+    --muted: #64748b;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: transparent; font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    overflow: hidden; user-select: none;
+  }
+
+  .widget-container {
+    display: flex; align-items: center; gap: 16px;
+    width: 100%; height: 100%; padding: 16px;
+  }
+
+  .icon-box {
+    width: 60px; height: 60px; border-radius: 16px;
+    background: var(--accent-soft, rgba(37, 99, 235, 0.15));
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+  .icon-box svg { width: 36px; height: 36px; }
+
+  .info-box {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  }
+
+  .temp {
+    font-size: 32px; font-weight: 800; line-height: 1;
+    letter-spacing: -1px; color: var(--text);
+  }
+
+  .city {
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .desc {
+    font-size: 12px; color: var(--muted); font-weight: 500;
+    text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .loading {
+    font-size: 12px; color: var(--muted); font-weight: 500;
+    width: 100%; text-align: center;
+  }
+</style>
+<script src="../../vendor/lucide.min.js"></script>
+</head>
+<body>
+
+  <div class="widget-container" id="widget" style="display: none;">
+    <div class="icon-box" id="icon-box">
+      <i data-lucide="cloud-sun"></i>
+    </div>
+    <div class="info-box">
+      <div class="temp" id="temp">--°</div>
+      <div class="city" id="city">Cargando...</div>
+      <div class="desc" id="desc">...</div>
+    </div>
+  </div>
+  
+  <div class="loading" id="loading">Actualizando clima...</div>
+
+<script>
+  // Sincronización de Tema (ADN VicHeStudios)
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      // Calculamos el accent-soft manualmente ya que el widget está aislado
+      const hex = e.data.color.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      document.documentElement.style.setProperty('--accent-soft', `rgba(${r}, ${g}, ${b}, 0.15)`);
+    }
+  });
+
+  const getWeatherInfo = (code) => {
+    if (code === 0) return { icon: 'sun', label: 'Despejado' };
+    if (code === 1 || code === 2) return { icon: 'cloud-sun', label: 'Parcialmente nublado' };
+    if (code === 3) return { icon: 'cloud', label: 'Nublado' };
+    if (code === 45 || code === 48) return { icon: 'cloud-fog', label: 'Niebla' };
+    if (code >= 51 && code <= 55) return { icon: 'cloud-drizzle', label: 'Llovizna' };
+    if (code >= 61 && code <= 65) return { icon: 'cloud-rain', label: 'Lluvia' };
+    if (code >= 71 && code <= 75) return { icon: 'snowflake', label: 'Nieve' };
+    if (code >= 80 && code <= 82) return { icon: 'cloud-rain-wind', label: 'Chubascos' };
+    if (code >= 95 && code <= 99) return { icon: 'cloud-lightning', label: 'Tormenta' };
+    return { icon: 'cloud', label: 'Desconocido' };
+  };
+
+  const renderWeather = (temp, code, locationName) => {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('widget').style.display = 'flex';
+
+    document.getElementById('temp').textContent = `${Math.round(temp)}°`;
+    document.getElementById('city').textContent = locationName;
+    
+    const info = getWeatherInfo(code);
+    document.getElementById('desc').textContent = info.label;
+    document.getElementById('icon-box').innerHTML = `<i data-lucide="${info.icon}"></i>`;
+    
+    if (window.lucide) lucide.createIcons();
+  };
+
+  const fetchWeather = async (lat, lon, locationName) => {
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.current_weather) {
+        renderWeather(data.current_weather.temperature, data.current_weather.weathercode, locationName);
+      }
+    } catch (e) {
+      document.getElementById('loading').textContent = 'Error de conexión';
+    }
+  };
+
+  // Iniciar obtención de ubicación
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Mi Ubicación'),
+      () => fetchWeather(-33.45, -70.66, 'Santiago')
+    );
+  } else {
+    fetchWeather(-33.45, -70.66, 'Santiago');
+  }
+</script>
+</body>
+</html>
