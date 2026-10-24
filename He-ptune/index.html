@@ -24,26 +24,41 @@
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 
+  /* ============ SPLASH (carga inicial) ============ */
+  .splash { position: fixed; inset: 0; background: var(--field); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 20; transition: opacity 0.35s ease; }
+  .splash.hide { opacity: 0; pointer-events: none; }
+  .splash-logo { width: 64px; height: 64px; border-radius: 18px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px var(--accent-soft); animation: splashPulse 1.6s ease-in-out infinite; }
+  .splash-logo svg { width: 30px; height: 30px; }
+  .splash-name { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.2px; }
+  .splash-bar { width: 110px; height: 3px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 4px; }
+  .splash-bar span { display: block; width: 40%; height: 100%; background: var(--accent); border-radius: 3px; animation: splashSlide 1.2s ease-in-out infinite; }
+  @keyframes splashPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  @keyframes splashSlide { from { transform: translateX(-100%); } to { transform: translateX(280%); } }
+  @keyframes authIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
   /* ============ AUTH SCREEN ============ */
-  .auth-screen { position: absolute; inset: 0; background: var(--card); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; overflow-y: auto; }
-  .auth-box { background: var(--card); padding: 24px; border-radius: 16px; width: 100%; max-width: 340px; border: 2px solid var(--accent); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-  .auth-box h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; justify-content: center; color: var(--accent); }
-  .auth-box .subtitle { margin: 0 0 8px; font-size: 12px; color: var(--muted); text-align: center; }
-  .auth-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--field); color: var(--text); font: inherit; font-size: 13px; outline: none; transition: 0.2s; }
+  .auth-screen { position: absolute; inset: 0; background: var(--field); display: none; flex-direction: column; padding: 16px; z-index: 10; overflow-y: auto; }
+  .auth-box { margin: auto; background: var(--card); padding: 20px 22px 16px; border-radius: 18px; width: 100%; max-width: 340px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.12); animation: authIn 0.35s ease-out; }
+  .auth-brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .auth-logo { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 20px var(--accent-soft); }
+  .auth-logo svg { width: 22px; height: 22px; }
+  .auth-box h2 { margin: 0; font-size: 19px; font-weight: 700; color: var(--text); text-align: center; }
+  .auth-box .subtitle { margin: 0; font-size: 12px; color: var(--muted); text-align: center; }
+  .auth-input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--field); color: var(--text); font: inherit; font-size: 13px; outline: none; transition: border-color 0.2s; }
   .auth-input:focus { border-color: var(--accent); }
   .auth-label { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 2px; display: block; margin-top: 4px; }
-  .auth-btn { background: var(--accent); color: #fff; border: none; padding: 10px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 6px; }
+  .auth-btn { background: var(--accent); color: #fff; border: none; padding: 11px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 8px; }
   .auth-btn:hover { filter: brightness(1.1); }
   .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .auth-toggle { background: none; border: none; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px; text-align: center; font-family: inherit; }
-  .auth-toggle:hover { text-decoration: underline; }
+  .auth-toggle { background: var(--field); border: 1px solid var(--line); color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; padding: 9px; border-radius: 8px; text-align: center; font-family: inherit; transition: 0.2s; }
+  .auth-toggle:hover { background: var(--accent-soft); }
   .auth-msg { font-size: 12px; text-align: center; min-height: 16px; }
   .auth-msg.error { color: var(--danger); }
   .auth-msg.success { color: #16a34a; }
-  .auth-checkbox { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; margin-top: 4px; }
-  .auth-checkbox input { accent-color: var(--accent); }
-  .auth-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 4px; line-height: 1.4; }
-  .auth-warn { background: var(--accent-soft); border: 1px solid var(--accent-line); padding: 8px 10px; border-radius: 8px; font-size: 11px; color: var(--accent); line-height: 1.4; }
+  .auth-checkbox { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); cursor: pointer; margin-top: 2px; user-select: none; }
+  .auth-checkbox input { accent-color: var(--accent); width: 14px; height: 14px; margin: 0; }
+  .auth-hint { font-size: 11px; color: var(--muted); text-align: center; margin: 4px 0 0; line-height: 1.4; }
+  .auth-warn { background: var(--accent-soft); border: 1px solid var(--accent-line); padding: 8px 10px; border-radius: 10px; font-size: 11px; color: var(--accent); line-height: 1.4; }
 
   /* ============ MAIN APP ============ */
   .app-main { display: flex; flex-direction: column; height: 100%; width: 100%; }
@@ -132,14 +147,21 @@
 </head>
 <body>
 
+  <!-- SPLASH: se ve mientras se decide si hay sesión guardada (evita mostrar registro por un instante) -->
+  <div class="splash" id="splash">
+    <div class="splash-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+    <div class="splash-name">HE-ptune</div>
+    <div class="splash-bar"><span></span></div>
+  </div>
+
   <!-- AUTH SCREEN -->
   <div class="auth-screen" id="auth-screen">
     <div class="auth-box">
-      <h2>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 22px; height: 22px;"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        HE-ptune
-      </h2>
-      <p class="subtitle" id="auth-subtitle">Inicia sesión con tu cuenta de Neptune</p>
+      <div class="auth-brand">
+        <div class="auth-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <h2>HE-ptune</h2>
+        <p class="subtitle" id="auth-subtitle">Inicia sesión con tu cuenta de Neptune</p>
+      </div>
 
       <label class="auth-label" for="auth-username">Usuario</label>
       <input class="auth-input" type="text" id="auth-username" placeholder="Tu apodo único (minúsculas)" autocomplete="username" maxlength="20">
@@ -334,7 +356,15 @@
       el.className = 'auth-msg ' + type;
     }
 
+    function hideSplash() {
+      const s = document.getElementById('splash');
+      if (!s || s.classList.contains('hide')) return;
+      s.classList.add('hide');
+      setTimeout(() => s.remove(), 400);
+    }
+
     function showAuthScreen(mode = 'login') {
+      hideSplash();
       authMode = mode;
       document.getElementById('auth-screen').style.display = 'flex';
       document.getElementById('app-main').style.display = 'none';
@@ -507,6 +537,7 @@
     }
 
     function startApp() {
+      hideSplash();
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('app-main').style.display = 'flex';
 
@@ -935,7 +966,10 @@
         if (!field.value && suggested) field.value = suggested;
       }
 
+      // Red de seguridad: si la comprobación tarda demasiado, mostrar login
+      const safety = setTimeout(() => showAuthScreen('login'), 8000);
       await tryAutoLogin();
+      clearTimeout(safety);
     })();
   </script>
 </body>
