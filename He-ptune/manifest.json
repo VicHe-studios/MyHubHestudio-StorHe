@@ -4,5 +4,8 @@
   "icono": "globe",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "La red social de texto de la comunidad MyHub"
+  "descripcion": "La red social de texto de la comunidad MyHub",
+  "widgets": [
+    { "file": "Widgets/Hub-Reciente.html", "size": "2x2" }
+  ]
 }
