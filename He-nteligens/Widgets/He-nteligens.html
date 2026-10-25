@@ -25,6 +25,12 @@
     color: var(--text);
   }
   
+  /* --- SCROLLBAR ADN VICHE --- */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  
   .widget {
     height: 100%; display: flex; flex-direction: column; padding: 14px; gap: 8px;
   }
@@ -138,7 +144,6 @@
 
   let isGenerating = false;
 
-  // Leer configuración para el System Prompt
   function getSystemPrompt() {
     const config = JSON.parse(localStorage.getItem('myhub_he_nteligence_config') || '{}');
     const lengths = {
@@ -153,7 +158,7 @@
   }
 
   function render() {
-    if (isGenerating) return; // No molestar mientras escribe
+    if (isGenerating) return;
 
     const chats = JSON.parse(localStorage.getItem('myhub_he_nteligence_chats') || '[]');
     const activeId = localStorage.getItem('myhub_he_nteligence_active');
@@ -200,21 +205,18 @@
     let activeId = localStorage.getItem('myhub_he_nteligence_active');
     let chat = chats.find(c => c.id === activeId);
 
-    // Si no hay chat, crear uno nuevo
     if (!chat) {
       chat = { id: 'chat_' + Date.now(), title: 'Nuevo Chat', messages: [] };
       chats.unshift(chat);
       localStorage.setItem('myhub_he_nteligence_active', chat.id);
     }
 
-    // Guardar mensaje del usuario
     chat.messages.push({ role: 'user', content: text });
     if (chat.messages.length === 1) {
       chat.title = text.substring(0, 20) + (text.length > 20 ? '...' : '');
     }
     localStorage.setItem('myhub_he_nteligence_chats', JSON.stringify(chats));
 
-    // UI Loading
     isGenerating = true;
     msgInput.value = '';
     msgInput.disabled = true;
@@ -222,7 +224,7 @@
     previewEl.className = 'preview loading';
     previewRole.textContent = 'He-nteligens';
     previewText.textContent = 'Pensando...';
-    render(); // Actualiza el título
+    render();
 
     try {
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -246,10 +248,8 @@
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message || 'Error de API');
 
-      // Guardar respuesta IA
       const aiText = data.choices[0].message.content;
       
-      // Recargar chats porque el localStorage pudo haber cambiado
       chats = JSON.parse(localStorage.getItem('myhub_he_nteligence_chats') || '[]');
       chat = chats.find(c => c.id === chat.id) || chat; 
       
@@ -271,7 +271,6 @@
     render();
   }
 
-  // Eventos
   msgInput.addEventListener('input', () => {
     btnSend.disabled = msgInput.value.trim().length === 0;
   });
@@ -283,7 +282,7 @@
   btnSend.onclick = sendMessage;
 
   render();
-  setInterval(render, 3000); // Sincronización pasiva
+  setInterval(render, 3000);
   
   window.addEventListener('storage', (e) => {
     if (e.key && e.key.includes('myhub_he_nteligence')) render();
