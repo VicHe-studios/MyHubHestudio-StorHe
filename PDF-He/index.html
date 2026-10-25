@@ -104,24 +104,22 @@
   .empty p { margin: 0; font-size: 12.5px; max-width: 280px; line-height: 1.5; }
   .empty .btn-primary { margin-top: 8px; padding: 10px 16px; font-size: 13px; }
 
-  /* CONTENEDOR CORREGIDO: Usamos display block para el scroll */
   .viewer-container {
     flex: 1; width: 100%; height: 100%;
-    overflow: auto; /* Permite el scroll horizontal y vertical */
+    overflow: auto;
     padding: 20px; display: none; 
-    text-align: center; /* Centra el PDF si es más pequeño que la ventana */
+    text-align: center;
   }
 
-  /* Envoltorio que crece si el canvas es más ancho, permitiendo el scroll correcto */
   #pdf-pages {
     display: inline-block; 
-    min-width: 100%; /* Obliga al contenedor a medir al menos lo que mide la ventana */
+    min-width: 100%;
   }
 
   canvas.pdf-page {
     box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 4px;
     background: #fff; display: block; 
-    margin: 0 auto; /* Centra el canvas dentro del inline-block */
+    margin: 0 auto;
     max-width: none;
   }
   
@@ -132,13 +130,40 @@
   .app-credit { text-align: center; font-size: 11px; color: var(--muted); padding: 8px; border-top: 1px solid var(--line); background: var(--card); flex-shrink: 0; }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
 
-  .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: var(--text); color: var(--card); padding: 10px 18px; border-radius: 10px;
-    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.25s;
-    z-index: 1000; max-width: 80%; text-align: center;
+  /* MODAL CONFIRM */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 9999;
   }
-  .toast.show { opacity: 1; }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); width: 90%; max-width: 300px; padding: 20px;
+    border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column; gap: 12px; color: var(--text);
+  }
+  .modal h3 { margin: 0; font-size: 16px; }
+  .modal p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .btn:hover { filter: brightness(1.1); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 10000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 </style>
 </head>
 <body>
@@ -208,6 +233,18 @@
     Renderizado con <a href="https://mozilla.github.io/pdf.js/" target="_blank">PDF.js</a> por Mozilla
   </div>
 
+  <!-- MODAL CONFIRM -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <h3 id="confirm-title">Confirmar</h3>
+      <p id="confirm-message">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn danger" id="btn-accept-confirm">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
 <script>
@@ -222,12 +259,39 @@
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-  const toastEl = document.getElementById('toast');
-  function showToast(msg) {
-    if (window.MyHub && typeof window.MyHub.toast === 'function') { window.MyHub.toast(msg); return; }
-    toastEl.textContent = msg; toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 2200);
+  // --- SISTEMA DE NOTIFICACIONES (Toast) ---
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    if (window.MyHub && typeof window.MyHub.toast === 'function' && type !== 'error') { 
+      window.MyHub.toast(msg); 
+      return; 
+    }
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
   }
+
+  // --- SISTEMA DE CONFIRMACIÓN ---
+  let confirmCallback = null;
+  function showConfirm(title, message, callback, isDanger = false) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    const btn = document.getElementById('btn-accept-confirm');
+    btn.className = isDanger ? 'btn danger' : 'btn primary';
+    confirmCallback = callback;
+    document.getElementById('modal-confirm').classList.add('active');
+  }
+  document.getElementById('btn-cancel-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    confirmCallback = null;
+  };
+  document.getElementById('btn-accept-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  };
 
   const DB_NAME = 'myhub_pdf', STORE = 'pdfs', KEY = 'current';
   function openDB() {
@@ -342,7 +406,6 @@
       const page = await pdfDoc.getPage(1);
       const baseViewport = page.getViewport({ scale: 1.0 });
       
-      // Ajuste inicial: -40px por el padding del contenedor
       const containerWidth = viewerContainer.clientWidth - 40;
       pageScale = containerWidth / baseViewport.width;
       if (pageScale < 0.5) pageScale = 0.5;
@@ -352,7 +415,7 @@
     } catch (err) {
       console.error(err);
       pdfPages.innerHTML = '<div style="color:var(--danger); text-align:center;">Error al renderizar el PDF.</div>';
-      showToast('Error al leer el PDF');
+      showToast('Error al leer el PDF', 'error');
     }
   }
 
@@ -369,7 +432,7 @@
     try {
       const data = await getPDF();
       data ? await showPDF(data) : showEmpty();
-    } catch (err) { console.error(err); showEmpty(); showToast('Error al cargar el PDF'); }
+    } catch (err) { console.error(err); showEmpty(); showToast('Error al cargar el PDF', 'error'); }
   }
 
   document.getElementById('btn-zoom-in').onclick = () => { if(!pdfDoc) return; pageScale += 0.25; queueRenderPage(pageNum); };
@@ -401,14 +464,39 @@
   fileInput.onchange = async (e) => {
     const file = e.target.files[0]; e.target.value = '';
     if (!file) return;
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { showToast('Solo se permiten archivos PDF'); return; }
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { 
+      showToast('Solo se permiten archivos PDF', 'error'); 
+      return; 
+    }
+
+    const processFile = async () => {
+      try {
+        await savePDF({ blob: file, name: file.name, date: Date.now() });
+        await refresh(); showToast('PDF cargado correctamente');
+      } catch (err) { 
+        console.error(err); 
+        showToast('No se pudo guardar el PDF', 'error'); 
+      }
+    };
 
     try {
       const existing = await getPDF();
-      if (existing && !confirm('Ya hay un PDF guardado. ¿Quieres reemplazarlo?')) return;
-      await savePDF({ blob: file, name: file.name, date: Date.now() });
-      await refresh(); showToast('PDF cargado correctamente');
-    } catch (err) { console.error(err); showToast('No se pudo guardar el PDF'); }
+      
+      // REEMPLAZO DE CONFIRM
+      if (existing) {
+        showConfirm(
+          'Reemplazar PDF', 
+          'Ya hay un PDF guardado. ¿Quieres reemplazarlo?', 
+          processFile, 
+          true
+        );
+      } else {
+        await processFile();
+      }
+    } catch (err) { 
+      console.error(err); 
+      showToast('No se pudo verificar el PDF existente', 'error'); 
+    }
   };
 
   btnDownload.onclick = async () => {
@@ -422,8 +510,21 @@
   };
 
   btnDelete.onclick = async () => {
-    if (!confirm('¿Eliminar el PDF guardado?')) return;
-    try { await deletePDF(); showEmpty(); showToast('PDF eliminado'); } catch (err) { showToast('Error al eliminar'); }
+    // REEMPLAZO DE CONFIRM
+    showConfirm(
+      'Eliminar PDF', 
+      '¿Estás seguro de que deseas eliminar el PDF guardado permanentemente?', 
+      async () => {
+        try { 
+          await deletePDF(); 
+          showEmpty(); 
+          showToast('PDF eliminado'); 
+        } catch (err) { 
+          showToast('Error al eliminar', 'error'); 
+        }
+      }, 
+      true
+    );
   };
 
   refresh();
