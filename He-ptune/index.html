@@ -147,7 +147,7 @@
 </head>
 <body>
 
-  <!-- SPLASH: se ve mientras se decide si hay sesión guardada (evita mostrar registro por un instante) -->
+  <!-- SPLASH: se ve mientras se decide si hay sesión guardada -->
   <div class="splash" id="splash">
     <div class="splash-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
     <div class="splash-name">HE-ptune</div>
@@ -241,6 +241,7 @@
     </div>
   </div>
 
+  <!-- MODAL PERFIL -->
   <div class="modal" id="modal-profile">
     <div class="modal-box">
       <h3>Mi Perfil</h3>
@@ -255,6 +256,18 @@
       <div class="modal-actions">
         <button class="btn-cancel" id="btn-cancel-profile">Cancelar</button>
         <button class="btn-save" id="btn-save-profile">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NUEVO MODAL DE CONFIRMACIÓN (Reemplaza al nativo) -->
+  <div class="modal" id="modal-confirm">
+    <div class="modal-box">
+      <h3 id="confirm-title">Confirmar</h3>
+      <p id="confirm-message" style="font-size:13px; color:var(--muted); margin:0; line-height:1.4;">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn-save" id="btn-accept-confirm">Aceptar</button>
       </div>
     </div>
   </div>
@@ -290,6 +303,7 @@
     let userInteractions = {};
     let authMode = 'login';
     let toastTimeout;
+    let confirmCallback = null; // Para el nuevo sistema de confirmación
 
     const ICONS = {
       user: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
@@ -337,6 +351,37 @@
         el.style.transform = 'translateX(-50%) translateY(-10px)';
       }, 2500);
     }
+
+    // ==========================================
+    // MODAL DE CONFIRMACIÓN CUSTOM
+    // ==========================================
+    function showConfirm(title, message, callback, isDanger = false) {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+      
+      const btnAccept = document.getElementById('btn-accept-confirm');
+      if (isDanger) {
+        btnAccept.style.background = 'var(--danger)';
+        btnAccept.style.color = '#fff';
+      } else {
+        btnAccept.style.background = 'var(--accent)';
+        btnAccept.style.color = '#fff';
+      }
+
+      confirmCallback = callback;
+      document.getElementById('modal-confirm').classList.add('active');
+    }
+
+    document.getElementById('btn-cancel-confirm').onclick = () => {
+      document.getElementById('modal-confirm').classList.remove('active');
+      confirmCallback = null;
+    };
+
+    document.getElementById('btn-accept-confirm').onclick = () => {
+      document.getElementById('modal-confirm').classList.remove('active');
+      if (confirmCallback) confirmCallback();
+      confirmCallback = null;
+    };
 
     // ==========================================
     // AUTH
@@ -580,7 +625,6 @@
     async function loadFeed() {
       if (!supabaseClient) return;
 
-      // Refresh del perfil (para detectar ban/admin actualizados)
       try {
         const { data: refreshed } = await supabaseClient.from('profiles').select('ban_level, is_admin, avatar, display_name').eq('id', currentUser.id).maybeSingle();
         if (refreshed) {
@@ -767,17 +811,19 @@
       if (!post) return;
       const canDelete = currentUser.is_admin || post.author_id === currentUser.id;
       if (!canDelete) return showToast('Sin permiso', 'error');
-      if (!confirm('¿Eliminar esta publicación permanentemente?')) return;
-
-      try {
-        await supabaseClient.from('comments').delete().eq('post_id', postId);
-        await supabaseClient.from('reactions').delete().eq('post_id', postId);
-        await supabaseClient.from('posts').delete().eq('id', postId);
-        showToast('Publicación eliminada');
-        await loadFeed();
-      } catch(e) {
-        showToast('Error al eliminar: ' + e.message, 'error');
-      }
+      
+      // REEMPLAZO DE CONFIRM NATIVO
+      showConfirm('Eliminar publicación', '¿Eliminar esta publicación permanentemente?', async () => {
+        try {
+          await supabaseClient.from('comments').delete().eq('post_id', postId);
+          await supabaseClient.from('reactions').delete().eq('post_id', postId);
+          await supabaseClient.from('posts').delete().eq('id', postId);
+          showToast('Publicación eliminada');
+          await loadFeed();
+        } catch(e) {
+          showToast('Error al eliminar: ' + e.message, 'error');
+        }
+      }, true);
     };
 
     window.banUser = async (userId, currentLevel) => {
@@ -786,39 +832,52 @@
 
       const newLevel = currentLevel > 0 ? 0 : 1;
       const action = newLevel > 0 ? 'banear' : 'desbanear';
-      if (!confirm(`¿${action} a este usuario?`)) return;
-
-      try {
-        await supabaseClient.from('profiles').update({ ban_level: newLevel }).eq('id', userId);
-        showToast(newLevel > 0 ? 'Usuario baneado' : 'Usuario desbaneado');
-        await loadFeed();
-      } catch(e) {
-        showToast('Error: ' + e.message, 'error');
-      }
+      
+      // REEMPLAZO DE CONFIRM NATIVO
+      showConfirm(
+        action === 'banear' ? 'Banear usuario' : 'Desbanear usuario',
+        `¿Estás seguro que deseas ${action} a este usuario?`,
+        async () => {
+          try {
+            await supabaseClient.from('profiles').update({ ban_level: newLevel }).eq('id', userId);
+            showToast(newLevel > 0 ? 'Usuario baneado' : 'Usuario desbaneado');
+            await loadFeed();
+          } catch(e) {
+            showToast('Error: ' + e.message, 'error');
+          }
+        },
+        action === 'banear'
+      );
     };
 
     window.reportPost = async (targetId) => {
       if (!supabaseClient) return;
       if (targetId === currentUser.id) return showToast('No podés reportarte a vos mismo', 'error');
-      if (!confirm('¿Reportar a este usuario? 6 reportes = suspensión automática.')) return;
+      
+      // REEMPLAZO DE CONFIRM NATIVO
+      showConfirm(
+        'Reportar usuario',
+        '¿Reportar a este usuario? 6 reportes = suspensión automática.',
+        async () => {
+          try {
+            await supabaseClient.from('reports').insert([{ reporter_id: currentUser.id, target_type: 'user', target_id: targetId, reason: 'Contenido inapropiado' }]);
 
-      try {
-        await supabaseClient.from('reports').insert([{ reporter_id: currentUser.id, target_type: 'user', target_id: targetId, reason: 'Contenido inapropiado' }]);
+            const { count } = await supabaseClient.from('reports').select('*', { count: 'exact', head: true }).eq('target_id', targetId);
+            if (count >= 6) {
+              const { data: target } = await supabaseClient.from('profiles').select('is_admin, ban_level').eq('id', targetId).maybeSingle();
+              if (target && !target.is_admin && (!target.ban_level || target.ban_level === 0)) {
+                await supabaseClient.from('profiles').update({ ban_level: 1 }).eq('id', targetId);
+                showToast('Usuario suspendido automáticamente (6 reportes)', 'error');
+              }
+            }
 
-        // Auto-ban al llegar a 6 reportes (excepto admins)
-        const { count } = await supabaseClient.from('reports').select('*', { count: 'exact', head: true }).eq('target_id', targetId);
-        if (count >= 6) {
-          const { data: target } = await supabaseClient.from('profiles').select('is_admin, ban_level').eq('id', targetId).maybeSingle();
-          if (target && !target.is_admin && (!target.ban_level || target.ban_level === 0)) {
-            await supabaseClient.from('profiles').update({ ban_level: 1 }).eq('id', targetId);
-            showToast('Usuario suspendido automáticamente (6 reportes)', 'error');
+            showToast('Reporte enviado');
+          } catch(e) {
+            showToast('Error: ' + e.message, 'error');
           }
-        }
-
-        showToast('Reporte enviado');
-      } catch(e) {
-        showToast('Error: ' + e.message, 'error');
-      }
+        },
+        true
+      );
     };
 
     window.viewProfile = async (userId) => {
@@ -826,16 +885,19 @@
       if (currentUser.ban_level > 0) return showToast('Estás suspendido', 'error');
 
       const { data: isFollowing } = await supabaseClient.from('follows').select('*').eq('follower_id', currentUser.id).eq('following_id', userId).maybeSingle();
+      
       if (isFollowing) {
-        if (confirm('¿Dejar de seguir a este usuario?')) {
+        // REEMPLAZO DE CONFIRM NATIVO
+        showConfirm('Dejar de seguir', '¿Dejar de seguir a este usuario?', async () => {
           await supabaseClient.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', userId);
           showToast('Has dejado de seguir');
-        }
+        });
       } else {
-        if (confirm('¿Seguir a este usuario?')) {
+        // REEMPLAZO DE CONFIRM NATIVO
+        showConfirm('Seguir usuario', '¿Seguir a este usuario?', async () => {
           await supabaseClient.from('follows').insert([{ follower_id: currentUser.id, following_id: userId }]);
           showToast('Ahora seguís a este usuario');
-        }
+        });
       }
     };
 
@@ -876,7 +938,8 @@
     };
 
     document.getElementById('btn-logout').onclick = () => {
-      if (confirm('¿Cerrar sesión?')) logout();
+      // REEMPLAZO DE CONFIRM NATIVO
+      showConfirm('Cerrar sesión', '¿Estás seguro que deseas cerrar sesión?', logout);
     };
 
     document.getElementById('btn-profile').onclick = () => {
@@ -959,14 +1022,12 @@
         return;
       }
 
-      // Auto-sugerir username desde MyHub
       if (myhubProfile?.nombre) {
         const suggested = `${myhubProfile.nombre}${myhubProfile.apellido || ''}`.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
         const field = document.getElementById('auth-username');
         if (!field.value && suggested) field.value = suggested;
       }
 
-      // Red de seguridad: si la comprobación tarda demasiado, mostrar login
       const safety = setTimeout(() => showAuthScreen('login'), 8000);
       await tryAutoLogin();
       clearTimeout(safety);
