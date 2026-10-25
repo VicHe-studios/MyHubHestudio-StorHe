@@ -26,12 +26,23 @@
   }
 
   .widget {
-    height: 100%; display: flex; flex-direction: column; padding: 12px;
-    justify-content: center; gap: 6px;
+    height: 100%; display: grid;
+    padding: 10px 14px;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: 
+      "info controls"
+      "progress progress";
+    gap: 6px 12px;
+    align-content: center;
   }
 
   /* Título y Artista */
-  .info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+  .info {
+    grid-area: info;
+    display: flex; flex-direction: column; justify-content: center;
+    min-width: 0; gap: 2px;
+  }
   .title {
     font-size: 13px; font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -41,8 +52,33 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
+  /* Controles */
+  .controls {
+    grid-area: controls;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .btn {
+    background: transparent; border: none; color: var(--text);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    padding: 2px; border-radius: 50%; transition: 0.2s;
+  }
+  .btn:hover { color: var(--accent); background: var(--field); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn svg { width: 16px; height: 16px; }
+  
+  .btn-play {
+    width: 28px; height: 28px; background: var(--accent); color: #fff;
+  }
+  .btn-play:hover { filter: brightness(1.1); background: var(--accent); color: #fff;}
+  .btn-play svg { width: 12px; height: 12px; margin-left: 1px; }
+  .btn-play.paused svg { margin-left: 0; }
+
   /* Barra de progreso */
-  .progress-wrap { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .progress-wrap {
+    grid-area: progress;
+    display: flex; align-items: center; gap: 8px;
+    width: 100%;
+  }
   .progress {
     flex: 1; height: 4px; border-radius: 2px;
     background: var(--line); overflow: hidden; cursor: pointer;
@@ -52,28 +88,8 @@
     width: 0%; transition: width 0.2s linear;
   }
   .time {
-    font-size: 10px; color: var(--muted); font-weight: 600; min-width: 30px; text-align: right;
+    font-size: 10px; color: var(--muted); font-weight: 600; min-width: 28px; text-align: right;
   }
-
-  /* Controles */
-  .controls {
-    display: flex; align-items: center; justify-content: center; gap: 16px;
-  }
-  .btn {
-    background: transparent; border: none; color: var(--text);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    padding: 4px; border-radius: 50%; transition: 0.2s;
-  }
-  .btn:hover { color: var(--accent); background: var(--field); }
-  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
-  .btn svg { width: 16px; height: 16px; }
-  
-  .btn-play {
-    width: 32px; height: 32px; background: var(--accent); color: #fff;
-  }
-  .btn-play:hover { filter: brightness(1.1); background: var(--accent); color: #fff;}
-  .btn-play svg { width: 14px; height: 14px; margin-left: 1px; }
-  .btn-play.paused svg { margin-left: 0; }
 
   /* Estado vacío */
   .empty-state {
@@ -93,13 +109,6 @@
       <div class="artist" id="artist">-</div>
     </div>
 
-    <div class="progress-wrap">
-      <div class="progress" id="progress-container">
-        <div class="progress-bar" id="progress-bar"></div>
-      </div>
-      <div class="time" id="time">0:00</div>
-    </div>
-
     <div class="controls">
       <button class="btn" id="btn-prev">
         <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -113,6 +122,13 @@
       <button class="btn" id="btn-next">
         <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="time" id="time">0:00</div>
     </div>
   </div>
 
@@ -180,7 +196,7 @@
       return;
     }
     
-    mainEl.style.display = 'flex';
+    mainEl.style.display = 'grid';
     emptyEl.style.display = 'none';
 
     const song = songs[currentIndex];
