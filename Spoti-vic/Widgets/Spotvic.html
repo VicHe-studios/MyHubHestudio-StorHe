@@ -7,13 +7,11 @@
     --accent: #2563eb;
     --text: #0b1220;
     --muted: #64748b;
-    --field: #f6f8fb;
     --line: rgba(15, 23, 42, 0.08);
   }
   html[data-modo="oscuro"] {
     --text: #f4f4f6;
     --muted: #9ea1aa;
-    --field: #2a2a31;
     --line: rgba(255, 255, 255, 0.09);
   }
   * { box-sizing: border-box; }
@@ -26,59 +24,33 @@
 
   .widget {
     width: 100%; height: 100%;
-    display: flex; align-items: center; gap: 12px;
-    padding: 22px 14px 10px;
-    position: relative;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 0 16px;
+    gap: 6px;
   }
 
-  /* Badge superior */
-  .badge {
-    position: absolute; top: 8px; left: 14px;
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    color: var(--accent); letter-spacing: 0.5px;
-    display: flex; align-items: center; gap: 5px;
-  }
-  .badge-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--accent); animation: pulse 1.5s infinite;
-  }
-  .badge.paused .badge-dot { animation: none; opacity: 0.45; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-  /* Icono cuadrado (música) */
-  .song-icon {
-    width: 48px; height: 48px; border-radius: 10px;
-    background: var(--field); border: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: center;
-    color: var(--accent); flex-shrink: 0;
-  }
-  .song-icon svg { width: 22px; height: 22px; }
-
-  /* Info + progreso */
-  .info {
-    flex: 1; min-width: 0;
-    display: flex; flex-direction: column; gap: 2px;
-  }
   .title {
-    font-size: 13px; font-weight: 700;
+    font-size: 14px; font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    line-height: 1.2;
   }
-  .artist {
-    font-size: 10px; color: var(--muted);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+
+  .row {
+    display: flex; align-items: center; gap: 12px;
   }
-  .progress-wrap { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+
+  .time {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    min-width: 65px;
+  }
+
   .progress {
-    width: 100%; height: 3px; border-radius: 2px;
+    flex: 1; height: 4px; border-radius: 2px;
     background: var(--line); overflow: hidden;
   }
   .progress-bar {
     height: 100%; background: var(--accent); border-radius: 2px;
-    transition: width 0.4s linear;
-  }
-  .time-row {
-    display: flex; justify-content: space-between;
-    font-size: 9px; color: var(--muted); font-weight: 600;
+    transition: width 0.4s linear; width: 0%;
   }
 
   /* Estado vacío */
@@ -86,7 +58,6 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     width: 100%; height: 100%; color: var(--muted); gap: 6px;
     border-radius: 16px; border: 1px dashed var(--line);
-    padding: 10px;
   }
   .empty-state svg { width: 24px; height: 24px; opacity: 0.5; }
   .empty-state span { font-size: 11px; font-weight: 600; }
@@ -95,21 +66,10 @@
 <body>
 
   <div class="widget" id="main" style="display:none;">
-    <div class="badge" id="badge">
-      <span class="badge-dot"></span>
-      <span id="badge-text">Reproduciendo</span>
-    </div>
-    <div class="song-icon" id="song-icon"></div>
-    <div class="info">
-      <span class="title" id="title">-</span>
-      <span class="artist" id="artist">-</span>
-      <div class="progress-wrap">
-        <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
-        <div class="time-row">
-          <span id="time-current">0:00</span>
-          <span id="time-total">0:00</span>
-        </div>
-      </div>
+    <div class="title" id="title">-</div>
+    <div class="row">
+      <span class="time" id="time">0:00 / 0:00</span>
+      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
     </div>
   </div>
 
@@ -129,24 +89,11 @@
 
   const NP_KEY = 'spoti_vic_nowplaying';
   const DB_NAME = 'spoti_vic_db';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
 
   const $ = id => document.getElementById(id);
   const mainEl = $('main'), emptyEl = $('empty');
-  const badgeEl = $('badge'), badgeText = $('badge-text');
-  const songIconEl = $('song-icon');
-  const titleEl = $('title'), artistEl = $('artist');
-  const progressBar = $('progress-bar');
-  const timeCurrent = $('time-current'), timeTotal = $('time-total');
-
-  const ICONS = {
-    music: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`,
-    disc: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/></svg>`,
-    headphones: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5a9 9 0 0 1 18 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>`,
-    mic: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`,
-    star: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-    heart: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`
-  };
+  const titleEl = $('title'), timeEl = $('time'), progressBar = $('progress-bar');
 
   let libraryCache = { songs: [], ts: 0 };
 
@@ -182,29 +129,23 @@
     let np = null;
     try { np = raw ? JSON.parse(raw) : null; } catch (e) {}
 
-    const isFresh = np && (now - (np.ts || 0) < 5000);
-    const isPlaying = np && np.playing && isFresh;
-
-    // Modo 1: Now playing
     if (np) {
       mainEl.style.display = 'flex';
       emptyEl.style.display = 'none';
 
-      badgeEl.className = 'badge' + (isPlaying ? '' : ' paused');
-      badgeText.textContent = isPlaying ? 'Reproduciendo' : 'Pausado';
+      // Formato: "Canción - Artista" (como en Android)
+      titleEl.textContent = np.artist && np.artist !== 'Desconocido' 
+        ? `${np.title} - ${np.artist}` 
+        : np.title;
 
-      songIconEl.innerHTML = ICONS[np.icon] || ICONS.music;
-      titleEl.textContent = np.title || 'Sin título';
-      artistEl.textContent = np.artist || 'Desconocido';
-
+      timeEl.textContent = `${formatTime(np.currentTime)} / ${formatTime(np.duration)}`;
+      
       const pct = (np.duration > 0) ? (np.currentTime / np.duration) * 100 : 0;
       progressBar.style.width = pct + '%';
-      timeCurrent.textContent = formatTime(np.currentTime);
-      timeTotal.textContent = formatTime(np.duration);
       return;
     }
 
-    // Modo 2: Última canción
+    // Modo 2: Última canción (Fallback)
     const lib = (libraryCache.ts && (now - libraryCache.ts < 10000))
       ? libraryCache : await loadLibrary();
 
@@ -219,16 +160,11 @@
     mainEl.style.display = 'flex';
     emptyEl.style.display = 'none';
 
-    badgeEl.className = 'badge paused';
-    badgeText.textContent = 'Última canción';
-
-    songIconEl.innerHTML = ICONS[recent.icon] || ICONS.music;
-    titleEl.textContent = recent.title || 'Sin título';
-    artistEl.textContent = recent.artist || 'Desconocido';
-
+    titleEl.textContent = recent.artist && recent.artist !== 'Desconocido'
+        ? `${recent.title} - ${recent.artist}` 
+        : recent.title;
+    timeEl.textContent = '0:00 / 0:00';
     progressBar.style.width = '0%';
-    timeCurrent.textContent = '0:00';
-    timeTotal.textContent = '0:00';
   }
 
   render();
