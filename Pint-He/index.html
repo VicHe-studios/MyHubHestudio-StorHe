@@ -13,6 +13,7 @@
     --card: #ffffff;
     --field: #f6f8fb;
     --canvas-bg: #ffffff;
+    --danger: #ef4444;
   }
   
   html[data-modo="oscuro"] {
@@ -32,29 +33,18 @@
     overflow: hidden;
   }
 
-  /* Barra de herramientas más compacta */
+  /* Barra de herramientas */
   .toolbar {
     display: flex; align-items: center; gap: 12px;
     padding: 8px 12px; border-bottom: 1px solid var(--line);
     background: var(--card); flex-shrink: 0;
     overflow-x: auto; 
-    padding-bottom: 10px; /* Espacio extra para la scrollbar */
+    padding-bottom: 10px;
   }
-
-  /* ESTILOS DE LA SCROLLBAR DE LA BARRA DE HERRAMIENTAS */
-  .toolbar::-webkit-scrollbar {
-    height: 6px;
-  }
-  .toolbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .toolbar::-webkit-scrollbar-thumb {
-    background: var(--line);
-    border-radius: 4px;
-  }
-  .toolbar::-webkit-scrollbar-thumb:hover {
-    background: var(--muted);
-  }
+  .toolbar::-webkit-scrollbar { height: 6px; }
+  .toolbar::-webkit-scrollbar-track { background: transparent; }
+  .toolbar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .toolbar::-webkit-scrollbar-thumb:hover { background: var(--muted); }
   
   .tool-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .divider { width: 1px; height: 20px; background: var(--line); margin: 0 4px; flex-shrink: 0; }
@@ -68,7 +58,6 @@
   .swatch:hover { transform: scale(1.1); }
   .swatch.active { border-color: var(--text); box-shadow: 0 0 0 1px var(--card) inset; }
   
-  /* Colores fijos — paleta oficial del sistema MyHubHestudio */
   .c-blue   { background: #2563eb; }
   .c-sky    { background: #0ea5e9; }
   .c-red    { background: #dc2626; }
@@ -109,10 +98,40 @@
     border: 1px solid var(--line);
   }
 
-  .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); padding: 6px;
-    background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0;
+  /* MODAL CONFIRM */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 9999;
   }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); width: 90%; max-width: 300px; padding: 20px;
+    border-radius: 16px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column; gap: 12px; color: var(--text);
+  }
+  .modal h3 { margin: 0; font-size: 16px; }
+  .modal p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
+  .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .btn:hover { filter: brightness(1.1); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 10000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 </style>
 </head>
 <body>
@@ -140,7 +159,7 @@
 
     <div class="divider"></div>
 
-    <!-- Paleta de colores fija del S.O. (10 colores: 8 originales + café + rosado) -->
+    <!-- Paleta de colores -->
     <div class="tool-group palette">
       <div class="swatch c-black"  data-color="#0b1220" title="Negro"></div>
       <div class="swatch c-white"  data-color="#ffffff" title="Blanco"></div>
@@ -172,9 +191,20 @@
     <canvas id="paint-canvas"></canvas>
   </div>
 
-  <div class="app-credit">
-    Hecho con ❤️ por VicHeStudios usando HTML5 Canvas
+  <!-- MODAL CONFIRM -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <h3 id="confirm-title">Confirmar</h3>
+      <p id="confirm-message">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn danger" id="btn-accept-confirm">Aceptar</button>
+      </div>
+    </div>
   </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
 
 <script>
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
@@ -185,6 +215,36 @@
       document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
     }
   });
+
+  // --- SISTEMA DE TOAST ---
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // --- SISTEMA DE CONFIRMACIÓN ---
+  let confirmCallback = null;
+  function showConfirm(title, message, callback, isDanger = false) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    const btn = document.getElementById('btn-accept-confirm');
+    btn.className = isDanger ? 'btn danger' : 'btn primary';
+    confirmCallback = callback;
+    document.getElementById('modal-confirm').classList.add('active');
+  }
+  document.getElementById('btn-cancel-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    confirmCallback = null;
+  };
+  document.getElementById('btn-accept-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  };
 
   const canvas = document.getElementById('paint-canvas');
   const ctx = canvas.getContext('2d');
@@ -349,10 +409,12 @@
   });
 
   document.getElementById('btn-clear').onclick = () => {
-    if(confirm('¿Seguro que quieres borrar todo el dibujo?')) {
+    // REEMPLAZO DE CONFIRM
+    showConfirm('Limpiar lienzo', '¿Estás seguro de que quieres borrar todo el dibujo?', () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       saveState();
-    }
+      showToast('Lienzo borrado');
+    }, true);
   };
 
   document.getElementById('btn-save').onclick = () => {
@@ -370,6 +432,7 @@
     link.download = `MiDibujo_${Date.now()}.png`;
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
+    showToast('Imagen guardada con éxito');
   };
 </script>
 </body>
