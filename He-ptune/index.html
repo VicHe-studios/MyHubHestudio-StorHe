@@ -24,7 +24,7 @@
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 
-  /* ============ SPLASH (carga inicial) ============ */
+  /* ============ SPLASH ============ */
   .splash { position: fixed; inset: 0; background: var(--field); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 20; transition: opacity 0.35s ease; }
   .splash.hide { opacity: 0; pointer-events: none; }
   .splash-logo { width: 64px; height: 64px; border-radius: 18px; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 22px var(--accent-soft); animation: splashPulse 1.6s ease-in-out infinite; }
@@ -36,7 +36,7 @@
   @keyframes splashSlide { from { transform: translateX(-100%); } to { transform: translateX(280%); } }
   @keyframes authIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-  /* ============ AUTH SCREEN ============ */
+  /* ============ AUTH ============ */
   .auth-screen { position: absolute; inset: 0; background: var(--field); display: none; flex-direction: column; padding: 16px; z-index: 10; overflow-y: auto; }
   .auth-box { margin: auto; background: var(--card); padding: 20px 22px 16px; border-radius: 18px; width: 100%; max-width: 340px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; box-shadow: 0 12px 32px rgba(0,0,0,0.12); animation: authIn 0.35s ease-out; }
   .auth-brand { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 4px; }
@@ -60,7 +60,7 @@
   .auth-hint { font-size: 11px; color: var(--muted); text-align: center; margin: 4px 0 0; line-height: 1.4; }
   .auth-warn { background: var(--accent-soft); border: 1px solid var(--accent-line); padding: 8px 10px; border-radius: 10px; font-size: 11px; color: var(--accent); line-height: 1.4; }
 
-  /* ============ MAIN APP ============ */
+  /* ============ MAIN ============ */
   .app-main { display: flex; flex-direction: column; height: 100%; width: 100%; }
 
   .header { padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--card); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
@@ -101,11 +101,12 @@
   .post-content { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .post-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .post-author { font-weight: 700; font-size: 13px; cursor: pointer; color: var(--accent); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .post-author:hover { text-decoration: underline; }
   .post-date { font-size: 11px; color: var(--muted); flex-shrink: 0; }
   .post-text { font-size: 13.5px; line-height: 1.5; word-break: break-word; margin: 4px 0; }
   .post-footer { display: flex; gap: 6px; margin-top: 4px; align-items: center; flex-wrap: wrap; }
 
-  .btn-action { background: transparent; border: none; color: var(--muted); display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: 0.2s; font-family: inherit; }
+  .btn-action { background: transparent; border: none; color: var(--muted); display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: 0.2s; font-family: inherit; }
   .btn-action:hover { background: var(--field); color: var(--text); }
   .btn-action.liked { color: var(--danger); }
   .btn-action.disliked { color: #3b82f6; }
@@ -139,6 +140,23 @@
   .btn-cancel { background: var(--field); color: var(--text); border: 1px solid var(--line); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: inherit; }
   .btn-save { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; font-family: inherit; }
 
+  /* Profile view modal extras */
+  #modal-view-profile .modal-box { max-width: 340px; }
+  .vp-head { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .vp-head .avatar { width: 64px; height: 64px; padding: 12px; }
+  .vp-username { font-size: 12px; color: var(--muted); }
+  .vp-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .vp-stats { display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .vp-stat { text-align: center; }
+  .vp-stat-num { font-weight: 700; font-size: 16px; }
+  .vp-stat-label { font-size: 11px; color: var(--muted); }
+  .vp-actions { display: flex; gap: 8px; }
+  .vp-actions .btn-save, .vp-actions .btn-cancel { flex: 1; }
+  .vp-recent { display: flex; flex-direction: column; gap: 6px; }
+  .vp-recent-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .vp-recent-item { background: var(--field); padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.4; word-break: break-word; }
+  .vp-empty { font-size: 11px; color: var(--muted); text-align: center; padding: 4px; }
+
   @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -147,14 +165,14 @@
 </head>
 <body>
 
-  <!-- SPLASH: se ve mientras se decide si hay sesión guardada -->
+  <!-- SPLASH -->
   <div class="splash" id="splash">
     <div class="splash-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
     <div class="splash-name">HE-ptune</div>
     <div class="splash-bar"><span></span></div>
   </div>
 
-  <!-- AUTH SCREEN -->
+  <!-- AUTH -->
   <div class="auth-screen" id="auth-screen">
     <div class="auth-box">
       <div class="auth-brand">
@@ -241,7 +259,7 @@
     </div>
   </div>
 
-  <!-- MODAL PERFIL -->
+  <!-- MODAL: EDITAR MI PERFIL -->
   <div class="modal" id="modal-profile">
     <div class="modal-box">
       <h3>Mi Perfil</h3>
@@ -260,7 +278,42 @@
     </div>
   </div>
 
-  <!-- NUEVO MODAL DE CONFIRMACIÓN (Reemplaza al nativo) -->
+  <!-- MODAL: VER PERFIL DE OTRO USUARIO -->
+  <div class="modal" id="modal-view-profile">
+    <div class="modal-box">
+      <div class="vp-head">
+        <div class="avatar" id="vp-avatar"></div>
+        <h3 id="vp-name" style="margin:0;"></h3>
+        <div class="vp-username" id="vp-username"></div>
+        <div class="vp-badges" id="vp-badges"></div>
+      </div>
+
+      <div class="vp-stats">
+        <div class="vp-stat">
+          <div class="vp-stat-num" id="vp-posts-count">0</div>
+          <div class="vp-stat-label">Posts</div>
+        </div>
+        <div class="vp-stat">
+          <div class="vp-stat-num" id="vp-followers-count">0</div>
+          <div class="vp-stat-label">Seguidores</div>
+        </div>
+        <div class="vp-stat">
+          <div class="vp-stat-num" id="vp-following-count">0</div>
+          <div class="vp-stat-label">Siguiendo</div>
+        </div>
+      </div>
+
+      <div class="vp-actions" id="vp-actions"></div>
+
+      <div class="vp-recent" id="vp-recent"></div>
+
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btn-close-view-profile">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRMACIÓN -->
   <div class="modal" id="modal-confirm">
     <div class="modal-box">
       <h3 id="confirm-title">Confirmar</h3>
@@ -301,9 +354,10 @@
     let currentFeed = 'all';
     let followingIds = new Set();
     let userInteractions = {};
+    let reactionCounts = {}; // { [postId]: { like: N, dislike: M } }
     let authMode = 'login';
     let toastTimeout;
-    let confirmCallback = null; // Para el nuevo sistema de confirmación
+    let confirmCallback = null;
 
     const ICONS = {
       user: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
@@ -353,20 +407,15 @@
     }
 
     // ==========================================
-    // MODAL DE CONFIRMACIÓN CUSTOM
+    // MODAL DE CONFIRMACIÓN
     // ==========================================
     function showConfirm(title, message, callback, isDanger = false) {
       document.getElementById('confirm-title').textContent = title;
       document.getElementById('confirm-message').textContent = message;
-      
+
       const btnAccept = document.getElementById('btn-accept-confirm');
-      if (isDanger) {
-        btnAccept.style.background = 'var(--danger)';
-        btnAccept.style.color = '#fff';
-      } else {
-        btnAccept.style.background = 'var(--accent)';
-        btnAccept.style.color = '#fff';
-      }
+      btnAccept.style.background = isDanger ? 'var(--danger)' : 'var(--accent)';
+      btnAccept.style.color = '#fff';
 
       confirmCallback = callback;
       document.getElementById('modal-confirm').classList.add('active');
@@ -658,17 +707,28 @@
 
         const postIds = posts.map(p => p.id);
         userInteractions = {};
+        reactionCounts = {};
         if (postIds.length > 0) {
-          const { data: reactions } = await supabaseClient.from('reactions').select('*').eq('user_id', currentUser.id).in('post_id', postIds);
-          const { data: comments } = await supabaseClient.from('comments').select('*').in('post_id', postIds);
+          const [reactionsRes, commentsRes, allReactionsRes] = await Promise.all([
+            supabaseClient.from('reactions').select('*').eq('user_id', currentUser.id).in('post_id', postIds),
+            supabaseClient.from('comments').select('*').in('post_id', postIds),
+            supabaseClient.from('reactions').select('post_id, type').in('post_id', postIds)
+          ]);
 
-          if (reactions) reactions.forEach(r => { userInteractions[r.post_id] = { reaction: r.type, commented: false }; });
-          if (comments) comments.forEach(c => {
+          if (reactionsRes.data) reactionsRes.data.forEach(r => { userInteractions[r.post_id] = { reaction: r.type, commented: false }; });
+          if (commentsRes.data) commentsRes.data.forEach(c => {
             if (c.author_id === currentUser.id) {
               if (!userInteractions[c.post_id]) userInteractions[c.post_id] = {};
               userInteractions[c.post_id].commented = true;
             }
           });
+          if (allReactionsRes.data) {
+            allReactionsRes.data.forEach(r => {
+              if (!reactionCounts[r.post_id]) reactionCounts[r.post_id] = { like: 0, dislike: 0 };
+              if (r.type === 'like') reactionCounts[r.post_id].like++;
+              else if (r.type === 'dislike') reactionCounts[r.post_id].dislike++;
+            });
+          }
         }
 
         allPosts = posts;
@@ -696,16 +756,17 @@
         const isBannedAuthor = author.ban_level > 0;
         const canDelete = currentUser.is_admin || post.author_id === currentUser.id;
         const adminBtn = currentUser.is_admin && post.author_id !== currentUser.id;
+        const counts = reactionCounts[post.id] || { like: 0, dislike: 0 };
 
         const adminBadge = author.is_admin ? '<span class="admin-badge" style="font-size:8px;padding:1px 4px;">Admin</span>' : '';
         const bannedBadge = isBannedAuthor ? '<span style="font-size:9px;color:#ef4444;font-weight:700;background:rgba(239,68,68,0.1);padding:1px 5px;border-radius:4px;">SUSPENDIDO</span>' : '';
 
         return `
           <div class="post ${isBannedAuthor ? 'banned-author' : ''}" data-post-id="${post.id}">
-            <div class="avatar">${avatarSvg}</div>
+            <div class="avatar" style="cursor:pointer;" onclick="openProfileView('${post.author_id}')" title="Ver perfil">${avatarSvg}</div>
             <div class="post-content">
               <div class="post-header">
-                <span class="post-author" onclick="viewProfile('${post.author_id}')">
+                <span class="post-author" onclick="openProfileView('${post.author_id}')" title="Ver perfil">
                   ${escapeHtml(author.display_name)} ${adminBadge} ${bannedBadge}
                 </span>
                 <span class="post-date">${date}</span>
@@ -715,9 +776,11 @@
               <div class="post-footer">
                 <button class="btn-action ${isLiked ? 'liked' : ''}" onclick="react('${post.id}', 'like')" title="Me gusta">
                   <svg viewBox="0 0 24 24" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                  <span>${counts.like}</span>
                 </button>
                 <button class="btn-action ${isDisliked ? 'disliked' : ''}" onclick="react('${post.id}', 'dislike')" title="No me gusta">
                   <svg viewBox="0 0 24 24" fill="${isDisliked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88Z"/></svg>
+                  <span>${counts.dislike}</span>
                 </button>
                 <button class="btn-action" onclick="toggleComment('${post.id}')" title="Comentar">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -763,11 +826,18 @@
       if (currentUser.ban_level > 0) return showToast('Estás suspendido', 'error');
 
       const existing = userInteractions[postId]?.reaction;
+      const counts = reactionCounts[postId] || (reactionCounts[postId] = { like: 0, dislike: 0 });
+
       if (existing === type) {
-        await supabaseClient.from('reactions').delete().eq('post_id', postId).eq('user_id', currentUser.id);
+        const { error } = await supabaseClient.from('reactions').delete().eq('post_id', postId).eq('user_id', currentUser.id);
+        if (error) return showToast('Error al reaccionar: ' + error.message, 'error');
+        counts[type] = Math.max(0, counts[type] - 1);
         userInteractions[postId].reaction = null;
       } else {
-        await supabaseClient.from('reactions').upsert({ post_id: postId, user_id: currentUser.id, type: type });
+        const { error } = await supabaseClient.from('reactions').upsert({ post_id: postId, user_id: currentUser.id, type: type });
+        if (error) return showToast('Error al reaccionar: ' + error.message, 'error');
+        if (existing && counts[existing]) counts[existing] = Math.max(0, counts[existing] - 1);
+        counts[type] = (counts[type] || 0) + 1;
         if (!userInteractions[postId]) userInteractions[postId] = {};
         userInteractions[postId].reaction = type;
       }
@@ -811,8 +881,7 @@
       if (!post) return;
       const canDelete = currentUser.is_admin || post.author_id === currentUser.id;
       if (!canDelete) return showToast('Sin permiso', 'error');
-      
-      // REEMPLAZO DE CONFIRM NATIVO
+
       showConfirm('Eliminar publicación', '¿Eliminar esta publicación permanentemente?', async () => {
         try {
           await supabaseClient.from('comments').delete().eq('post_id', postId);
@@ -832,8 +901,7 @@
 
       const newLevel = currentLevel > 0 ? 0 : 1;
       const action = newLevel > 0 ? 'banear' : 'desbanear';
-      
-      // REEMPLAZO DE CONFIRM NATIVO
+
       showConfirm(
         action === 'banear' ? 'Banear usuario' : 'Desbanear usuario',
         `¿Estás seguro que deseas ${action} a este usuario?`,
@@ -853,8 +921,7 @@
     window.reportPost = async (targetId) => {
       if (!supabaseClient) return;
       if (targetId === currentUser.id) return showToast('No podés reportarte a vos mismo', 'error');
-      
-      // REEMPLAZO DE CONFIRM NATIVO
+
       showConfirm(
         'Reportar usuario',
         '¿Reportar a este usuario? 6 reportes = suspensión automática.',
@@ -880,25 +947,89 @@
       );
     };
 
-    window.viewProfile = async (userId) => {
-      if (!supabaseClient || userId === currentUser.id) return;
-      if (currentUser.ban_level > 0) return showToast('Estás suspendido', 'error');
+    // ==========================================
+    // VER PERFIL DE USUARIO
+    // ==========================================
+    window.openProfileView = async (userId) => {
+      if (!supabaseClient || !userId) return;
 
-      const { data: isFollowing } = await supabaseClient.from('follows').select('*').eq('follower_id', currentUser.id).eq('following_id', userId).maybeSingle();
-      
-      if (isFollowing) {
-        // REEMPLAZO DE CONFIRM NATIVO
-        showConfirm('Dejar de seguir', '¿Dejar de seguir a este usuario?', async () => {
-          await supabaseClient.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', userId);
-          showToast('Has dejado de seguir');
-        });
-      } else {
-        // REEMPLAZO DE CONFIRM NATIVO
-        showConfirm('Seguir usuario', '¿Seguir a este usuario?', async () => {
-          await supabaseClient.from('follows').insert([{ follower_id: currentUser.id, following_id: userId }]);
-          showToast('Ahora seguís a este usuario');
-        });
+      try {
+        const { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).maybeSingle();
+        if (error || !profile) return showToast('Perfil no encontrado', 'error');
+
+        const isSelf = userId === currentUser.id;
+
+        // Cabecera
+        document.getElementById('vp-avatar').innerHTML = ICONS[profile.avatar] || ICONS.user;
+        document.getElementById('vp-name').textContent = profile.display_name || 'Anónimo';
+        document.getElementById('vp-username').textContent = profile.username ? '@' + profile.username : '';
+
+        const badges = [];
+        if (profile.is_admin) badges.push('<span class="admin-badge" style="font-size:8px;padding:1px 5px;">Admin</span>');
+        if ((profile.ban_level || 0) > 0) badges.push('<span style="font-size:9px;color:#ef4444;font-weight:700;background:rgba(239,68,68,0.1);padding:1px 5px;border-radius:4px;">SUSPENDIDO</span>');
+        document.getElementById('vp-badges').innerHTML = badges.join('');
+
+        // Estadísticas en paralelo
+        const [postsRes, followersRes, followingRes, followCheck, recentRes] = await Promise.all([
+          supabaseClient.from('posts').select('*', { count: 'exact', head: true }).eq('author_id', userId),
+          supabaseClient.from('follows').select('*', { count: 'exact', head: true }).eq('following_id', userId),
+          supabaseClient.from('follows').select('*', { count: 'exact', head: true }).eq('follower_id', userId),
+          isSelf
+            ? Promise.resolve({ data: null })
+            : supabaseClient.from('follows').select('*').eq('follower_id', currentUser.id).eq('following_id', userId).maybeSingle(),
+          supabaseClient.from('posts').select('content, created_at').eq('author_id', userId).order('created_at', { ascending: false }).limit(3)
+        ]);
+
+        document.getElementById('vp-posts-count').textContent = postsRes.count || 0;
+        document.getElementById('vp-followers-count').textContent = followersRes.count || 0;
+        document.getElementById('vp-following-count').textContent = followingRes.count || 0;
+
+        // Acciones
+        const actionsEl = document.getElementById('vp-actions');
+        if (isSelf) {
+          actionsEl.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;width:100%;padding:4px;">Este perfil sos vos</div>';
+        } else {
+          const isFollowing = !!followCheck.data;
+          const btnClass = isFollowing ? 'btn-cancel' : 'btn-save';
+          actionsEl.innerHTML = `
+            <button class="${btnClass}" id="btn-toggle-follow">${isFollowing ? 'Dejar de seguir' : 'Seguir'}</button>
+          `;
+          document.getElementById('btn-toggle-follow').onclick = async () => {
+            const btn = document.getElementById('btn-toggle-follow');
+            btn.disabled = true;
+            try {
+              if (isFollowing) {
+                await supabaseClient.from('follows').delete().eq('follower_id', currentUser.id).eq('following_id', userId);
+                showToast('Has dejado de seguir');
+              } else {
+                await supabaseClient.from('follows').insert([{ follower_id: currentUser.id, following_id: userId }]);
+                showToast('Ahora seguís a este usuario');
+              }
+              await openProfileView(userId);
+            } catch(e) {
+              showToast('Error: ' + e.message, 'error');
+              btn.disabled = false;
+            }
+          };
+        }
+
+        // Publicaciones recientes
+        const recentEl = document.getElementById('vp-recent');
+        if (recentRes.data && recentRes.data.length > 0) {
+          recentEl.innerHTML = '<div class="vp-recent-label">Publicaciones recientes</div>' +
+            recentRes.data.map(p => `<div class="vp-recent-item">${escapeHtml(p.content)}</div>`).join('');
+        } else {
+          recentEl.innerHTML = '<div class="vp-empty">Sin publicaciones aún</div>';
+        }
+
+        document.getElementById('modal-view-profile').classList.add('active');
+      } catch (e) {
+        showToast('Error al cargar perfil: ' + e.message, 'error');
       }
+    };
+
+    document.getElementById('btn-close-view-profile').onclick = () => {
+      document.getElementById('modal-view-profile').classList.remove('active');
     };
 
     // ==========================================
@@ -938,7 +1069,6 @@
     };
 
     document.getElementById('btn-logout').onclick = () => {
-      // REEMPLAZO DE CONFIRM NATIVO
       showConfirm('Cerrar sesión', '¿Estás seguro que deseas cerrar sesión?', logout);
     };
 
