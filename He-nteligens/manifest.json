@@ -4,5 +4,8 @@
   "icono": "bot",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "Interfaz de chat rápida con IA"
+  "descripcion": "Interfaz de chat rápida con IA",
+  "widgets": [
+    { "file": "Widgets/He-nteligens.html", "size": "2x2" }
+  ]
 }
