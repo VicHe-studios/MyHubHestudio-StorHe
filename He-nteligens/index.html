@@ -159,7 +159,7 @@
     flex: 1; padding: 10px 12px; border-radius: 10px;
     border: 1.5px solid var(--line); background: var(--field); color: var(--text);
     font-family: inherit; font-size: 13px; outline: none; resize: none;
-    height: 44px; /* Altura fija para 1 línea perfecta */
+    height: 44px; 
     min-height: 44px;
     max-height: 120px;
     line-height: 20px; transition: border-color 0.2s; overflow-y: hidden;
@@ -189,6 +189,7 @@
     display: flex; flex-direction: column; gap: 14px;
   }
   .modal h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .modal p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
   
   .input-group { display: flex; flex-direction: column; gap: 6px; }
   .input-group label { font-size: 12px; font-weight: 600; color: var(--muted); }
@@ -213,7 +214,23 @@
   .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
   .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
   .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
   .btn:hover { filter: brightness(1.1); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 1000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
   @keyframes bounce {
@@ -239,7 +256,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
           Ajustes
         </button>
-        <!-- Créditos sutiles -->
+        <!-- Créditos -->
         <div class="app-credit">
           Motor IA por <a href="https://openrouter.ai" target="_blank">OpenRouter</a>
         </div>
@@ -259,7 +276,6 @@
     </div>
     <div class="messages" id="messages"></div>
     <div class="input-area">
-      <!-- Altura ajustada para no cortar el texto -->
       <textarea class="input-box" id="input-box" placeholder="Escribe..." rows="1"></textarea>
       <button class="btn-send" id="btn-send" disabled>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
@@ -320,6 +336,21 @@
     </div>
   </div>
 
+  <!-- MODAL: CONFIRMACIÓN -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <h3 id="confirm-title">Confirmar</h3>
+      <p id="confirm-message">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn danger" id="btn-accept-confirm">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
 <script>
   // 1. Sincronización de Tema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
@@ -345,6 +376,36 @@
       }
     }
   });
+
+  // --- SISTEMA DE TOAST ---
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.innerHTML = msg;
+    el.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // --- SISTEMA DE CONFIRMACIÓN ---
+  let confirmCallback = null;
+  function showConfirm(title, message, callback, isDanger = false) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    const btn = document.getElementById('btn-accept-confirm');
+    btn.className = isDanger ? 'btn danger' : 'btn primary';
+    confirmCallback = callback;
+    document.getElementById('modal-confirm').classList.add('active');
+  }
+  document.getElementById('btn-cancel-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    confirmCallback = null;
+  };
+  document.getElementById('btn-accept-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  };
 
   // 3. Estado Global
   let config = JSON.parse(localStorage.getItem('myhub_he_nteligence_config') || '{}');
@@ -408,14 +469,17 @@
 
   const deleteChat = (id, e) => {
     e.stopPropagation();
-    if (!confirm('¿Eliminar este chat?')) return;
-    chats = chats.filter(c => c.id !== id);
-    if (activeChatId === id) {
-      activeChatId = chats.length > 0 ? chats[0].id : null;
-    }
-    saveChats();
-    renderSidebar();
-    renderMessages();
+    // REEMPLAZO DE CONFIRM
+    showConfirm('Eliminar chat', '¿Estás seguro de que deseas eliminar este chat?', () => {
+      chats = chats.filter(c => c.id !== id);
+      if (activeChatId === id) {
+        activeChatId = chats.length > 0 ? chats[0].id : null;
+      }
+      saveChats();
+      renderSidebar();
+      renderMessages();
+      showToast('Chat eliminado');
+    }, true);
   };
 
   const openRename = (id, e) => {
@@ -477,7 +541,7 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   };
 
-  // Renderiza el globo + el avatar SVG (CORREGIDO)
+  // Renderiza el globo + el avatar SVG
   const addMessageToDOM = (role, text) => {
     if (role === 'error') {
       const el = document.createElement('div');
@@ -489,7 +553,6 @@
     }
 
     const container = document.createElement('div');
-    // CORRECCIÓN: Asignar 'user' o 'ai' dependiendo del rol
     const styleClass = role === 'assistant' ? 'ai' : 'user';
     container.className = `msg-container ${styleClass}`;
     
@@ -498,7 +561,6 @@
       avatarHtml = `<div class="msg-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg></div>`;
     }
 
-    // CORRECCIÓN: Usar styleClass en lugar de role
     container.innerHTML = `
       ${avatarHtml}
       <div class="msg ${styleClass}">${text}</div>
@@ -515,7 +577,8 @@
 
     if (!config.token) {
       modalSettings.classList.add('active');
-      alert('Por favor, introduce tu API Token de OpenRouter en los ajustes primero.');
+      // REEMPLAZO DE ALERT
+      showToast('Por favor, introduce tu API Token primero.', 'error');
       return;
     }
 
@@ -629,7 +692,7 @@
     config.length = document.getElementById('sel-length').value;
     saveConfig();
     modalSettings.classList.remove('active');
-    if (window.MyHub) window.MyHub.toast('Ajustes guardados');
+    showToast('Ajustes guardados correctamente');
   };
 
   document.getElementById('btn-cancel-rename').onclick = () => modalRename.classList.remove('active');
