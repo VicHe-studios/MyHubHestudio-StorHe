@@ -1,0 +1,11 @@
+{
+  "id": "vid-he",
+  "titulo": "Vid-He",
+  "icono": "film",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Reproductor de vídeo local con biblioteca de hasta 25 MB",
+  "widgets": [
+    { "file": "Widgets/Vid.html", "size": "2x2" }
+  ]
+}
