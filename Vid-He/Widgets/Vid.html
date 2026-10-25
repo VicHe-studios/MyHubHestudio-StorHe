@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --accent: #2563eb;
+    --text: #0b1220;
+    --muted: #64748b;
+    --field: #f6f8fb;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --field: #2a2a31;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; width: 100vw;
+    background: transparent; overflow: hidden; border-radius: 16px;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    color: var(--text);
+  }
+  .widget {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    padding: 14px; gap: 10px; justify-content: center;
+  }
+  .badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    color: var(--accent); letter-spacing: 0.5px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); animation: pulse 1.5s infinite;
+  }
+  .badge.paused .badge-dot { animation: none; opacity: 0.45; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .video-row { display: flex; align-items: center; gap: 10px; min-height: 48px; }
+  .video-thumb {
+    width: 64px; height: 48px; border-radius: 8px;
+    background: var(--field); border: 1px solid var(--line);
+    overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+  }
+  .video-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .video-thumb svg { width: 20px; height: 20px; }
+  .video-info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+  .video-title {
+    font-size: 13px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .video-meta {
+    font-size: 11px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .progress-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .progress {
+    width: 100%; height: 4px; border-radius: 2px;
+    background: var(--line); overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; background: var(--accent); border-radius: 2px;
+    transition: width 0.4s linear;
+  }
+  .time-row {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--muted); font-weight: 600;
+  }
+  .stats {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    font-size: 10px; color: var(--muted); font-weight: 600;
+  }
+  .stats span { display: inline-flex; align-items: center; gap: 4px; }
+  .stats svg { width: 11px; height: 11px; }
+
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100%; height: 100%; color: var(--muted); gap: 8px;
+    border-radius: 16px; border: 1px dashed var(--line);
+    padding: 16px; text-align: center;
+  }
+  .empty-state svg { width: 32px; height: 32px; opacity: 0.5; }
+  .empty-state span { font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <div class="widget" id="main" style="display:none;">
+    <div class="badge" id="badge">
+      <span class="badge-dot"></span>
+      <span id="badge-text">Reproduciendo</span>
+    </div>
+    <div class="video-row">
+      <div class="video-thumb" id="video-thumb"></div>
+      <div class="video-info">
+        <span class="video-title" id="video-title">-</span>
+        <span class="video-meta" id="video-meta">-</span>
+      </div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+      <div class="time-row">
+        <span id="time-current">0:00</span>
+        <span id="time-total">0:00</span>
+      </div>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="empty-state" id="empty" style="display:none;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+    <span>Vid-He vacío</span>
+  </div>
+
+<script>
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+    }
+  });
+
+  const NP_KEY = 'vid_he_nowplaying';
+  const DB_NAME = 'vid_he_db';
+  const DB_VERSION = 1;
+
+  const $ = id => document.getElementById(id);
+  const mainEl = $('main'), emptyEl = $('empty');
+  const badgeEl = $('badge'), badgeText = $('badge-text');
+  const thumbEl = $('video-thumb');
+  const titleEl = $('video-title'), metaEl = $('video-meta');
+  const progressBar = $('progress-bar');
+  const timeCurrent = $('time-current'), timeTotal = $('time-total');
+  const statsEl = $('stats');
+
+  let libraryCache = { videos: [], ts: 0 };
+
+  const FILM_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>`;
+
+  function formatTime(s) {
+    if (!s || isNaN(s)) return '0:00';
+    s = Math.floor(s);
+    const m = Math.floor(s / 60);
+    const sec = String(s % 60).padStart(2, '0');
+    if (m >= 60) {
+      const h = Math.floor(m / 60);
+      return `${h}:${String(m % 60).padStart(2, '0')}:${sec}`;
+    }
+    return `${m}:${sec}`;
+  }
+
+  function openDB() {
+    return new Promise((res) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => res(null);
+    });
+  }
+
+  async function loadLibrary() {
+    try {
+      const db = await openDB();
+      if (!db) return libraryCache;
+      const tx = db.transaction('videos', 'readonly');
+      const r = tx.objectStore('videos').getAll();
+      await new Promise(res => tx.oncomplete = res);
+      libraryCache = { videos: r.result || [], ts: Date.now() };
+    } catch (e) {}
+    return libraryCache;
+  }
+
+  function renderStats(lib) {
+    const totalMB = lib.videos.reduce((a, v) => a + (v.size || 0), 0) / (1024 * 1024);
+    statsEl.innerHTML = `
+      <span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>${lib.videos.length}</span>
+      <span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></svg>${totalMB.toFixed(1)} MB</span>
+    `;
+  }
+
+  async function render() {
+    const now = Date.now();
+    const raw = localStorage.getItem(NP_KEY);
+    let np = null;
+    try { np = raw ? JSON.parse(raw) : null; } catch (e) {}
+
+    const isFresh = np && (now - (np.ts || 0) < 5000);
+    const isPlaying = np && np.playing && isFresh;
+
+    // ── Modo 1: Now playing ─────────────────
+    if (np) {
+      mainEl.style.display = 'flex';
+      emptyEl.style.display = 'none';
+
+      badgeEl.className = 'badge' + (isPlaying ? '' : ' paused');
+      badgeText.textContent = isPlaying ? 'Reproduciendo' : 'Pausado';
+
+      thumbEl.innerHTML = np.thumb ? `<img src="${np.thumb}" alt="">` : FILM_ICON;
+      titleEl.textContent = np.title || 'Sin título';
+      metaEl.textContent = np.duration ? formatTime(np.duration) : '-';
+
+      const pct = (np.duration > 0) ? (np.currentTime / np.duration) * 100 : 0;
+      progressBar.style.width = pct + '%';
+      timeCurrent.textContent = formatTime(np.currentTime);
+      timeTotal.textContent = formatTime(np.duration);
+
+      const lib = (libraryCache.ts && (now - libraryCache.ts < 10000))
+        ? libraryCache : await loadLibrary();
+      renderStats(lib);
+      return;
+    }
+
+    // ── Modo 2: Último vídeo ────────────────
+    const lib = (libraryCache.ts && (now - libraryCache.ts < 10000))
+      ? libraryCache : await loadLibrary();
+
+    if (lib.videos.length === 0) {
+      mainEl.style.display = 'none';
+      emptyEl.style.display = 'flex';
+      return;
+    }
+
+    const recent = [...lib.videos].sort((a, b) => (b.date || 0) - (a.date || 0))[0];
+
+    mainEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+
+    badgeEl.className = 'badge paused';
+    badgeText.textContent = 'Último vídeo';
+
+    thumbEl.innerHTML = recent.thumb ? `<img src="${recent.thumb}" alt="">` : FILM_ICON;
+    titleEl.textContent = recent.title || 'Sin título';
+    metaEl.textContent = recent.duration ? formatTime(recent.duration) : '-';
+
+    progressBar.style.width = '0%';
+    timeCurrent.textContent = '0:00';
+    timeTotal.textContent = formatTime(recent.duration);
+
+    renderStats(lib);
+  }
+
+  render();
+  setInterval(render, 1000);
+  window.addEventListener('storage', (e) => {
+    if (e.key === NP_KEY) render();
+  });
+</script>
+</body>
+</html>
