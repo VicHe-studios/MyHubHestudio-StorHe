@@ -5,13 +5,16 @@
 <style>
   :root {
     --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
     --text: #0b1220;
     --muted: #64748b;
+    --field: #f6f8fb;
     --line: rgba(15, 23, 42, 0.08);
   }
   html[data-modo="oscuro"] {
     --text: #f4f4f6;
     --muted: #9ea1aa;
+    --field: #2a2a31;
     --line: rgba(255, 255, 255, 0.09);
   }
   * { box-sizing: border-box; }
@@ -23,40 +26,59 @@
   }
 
   .widget {
-    width: 100%; height: 100%;
-    display: flex; flex-direction: column; justify-content: center;
-    padding: 0 16px;
-    gap: 6px;
+    height: 100%; display: flex; flex-direction: column; padding: 12px;
+    justify-content: center; gap: 6px;
   }
 
+  /* Título y Artista */
+  .info { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
   .title {
-    font-size: 14px; font-weight: 700;
+    font-size: 13px; font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    line-height: 1.2;
+  }
+  .artist {
+    font-size: 11px; color: var(--muted); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
-  .row {
-    display: flex; align-items: center; gap: 12px;
-  }
-
-  .time {
-    font-size: 11px; font-weight: 600; color: var(--muted);
-    min-width: 65px;
-  }
-
+  /* Barra de progreso */
+  .progress-wrap { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
   .progress {
     flex: 1; height: 4px; border-radius: 2px;
-    background: var(--line); overflow: hidden;
+    background: var(--line); overflow: hidden; cursor: pointer;
   }
   .progress-bar {
     height: 100%; background: var(--accent); border-radius: 2px;
-    transition: width 0.4s linear; width: 0%;
+    width: 0%; transition: width 0.2s linear;
   }
+  .time {
+    font-size: 10px; color: var(--muted); font-weight: 600; min-width: 30px; text-align: right;
+  }
+
+  /* Controles */
+  .controls {
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+  }
+  .btn {
+    background: transparent; border: none; color: var(--text);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    padding: 4px; border-radius: 50%; transition: 0.2s;
+  }
+  .btn:hover { color: var(--accent); background: var(--field); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn svg { width: 16px; height: 16px; }
+  
+  .btn-play {
+    width: 32px; height: 32px; background: var(--accent); color: #fff;
+  }
+  .btn-play:hover { filter: brightness(1.1); background: var(--accent); color: #fff;}
+  .btn-play svg { width: 14px; height: 14px; margin-left: 1px; }
+  .btn-play.paused svg { margin-left: 0; }
 
   /* Estado vacío */
   .empty-state {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 100%; height: 100%; color: var(--muted); gap: 6px;
+    height: 100%; color: var(--muted); gap: 6px;
     border-radius: 16px; border: 1px dashed var(--line);
   }
   .empty-state svg { width: 24px; height: 24px; opacity: 0.5; }
@@ -66,24 +88,50 @@
 <body>
 
   <div class="widget" id="main" style="display:none;">
-    <div class="title" id="title">-</div>
-    <div class="row">
-      <span class="time" id="time">0:00 / 0:00</span>
-      <div class="progress"><div class="progress-bar" id="progress-bar"></div></div>
+    <div class="info">
+      <div class="title" id="title">Sin reproducir</div>
+      <div class="artist" id="artist">-</div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress" id="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="time" id="time">0:00</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="btn-prev">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      
+      <button class="btn btn-play paused" id="btn-play">
+        <svg id="icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <svg id="icon-pause" style="display:none;" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      </button>
+      
+      <button class="btn" id="btn-next">
+        <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
     </div>
   </div>
 
   <div class="empty-state" id="empty" style="display:none;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
     <span>Spoti-vic vacío</span>
   </div>
 
+  <!-- Reproductor Independiente -->
+  <audio id="audio-widget"></audio>
+
 <script>
+  // Tema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
       document.documentElement.dataset.modo = e.data.modo;
       document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
     }
   });
 
@@ -92,10 +140,16 @@
   const DB_VERSION = 2;
 
   const $ = id => document.getElementById(id);
+  const audio = $('audio-widget');
   const mainEl = $('main'), emptyEl = $('empty');
-  const titleEl = $('title'), timeEl = $('time'), progressBar = $('progress-bar');
+  const titleEl = $('title'), artistEl = $('artist');
+  const progressBar = $('progress-bar'), timeEl = $('time');
+  const btnPlay = $('btn-play'), iconPlay = $('icon-play'), iconPause = $('icon-pause');
+  const btnPrev = $('btn-prev'), btnNext = $('btn-next');
 
-  let libraryCache = { songs: [], ts: 0 };
+  let songs = [];
+  let currentIndex = -1;
+  let objectUrl = null;
 
   function formatTime(s) {
     if (!s || isNaN(s)) return '0:00';
@@ -103,75 +157,147 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
-  function openDB() {
-    return new Promise((res) => {
+  // 1. Cargar canciones desde la base de datos de la App
+  async function loadSongs() {
+    return new Promise((resolve) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => res(null);
+      req.onsuccess = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('songs')) return resolve([]);
+        const tx = db.transaction('songs', 'readonly');
+        const r = tx.objectStore('songs').getAll();
+        r.onsuccess = () => resolve(r.result || []);
+      };
+      req.onerror = () => resolve([]);
     });
   }
 
-  async function loadLibrary() {
-    try {
-      const db = await openDB();
-      if (!db) return libraryCache;
-      const tx = db.transaction('songs', 'readonly');
-      const r = tx.objectStore('songs').getAll();
-      await new Promise(res => tx.oncomplete = res);
-      libraryCache = { songs: r.result || [], ts: Date.now() };
-    } catch (e) {}
-    return libraryCache;
-  }
-
-  async function render() {
-    const now = Date.now();
-    const raw = localStorage.getItem(NP_KEY);
-    let np = null;
-    try { np = raw ? JSON.parse(raw) : null; } catch (e) {}
-
-    if (np) {
-      mainEl.style.display = 'flex';
-      emptyEl.style.display = 'none';
-
-      // Formato: "Canción - Artista" (como en Android)
-      titleEl.textContent = np.artist && np.artist !== 'Desconocido' 
-        ? `${np.title} - ${np.artist}` 
-        : np.title;
-
-      timeEl.textContent = `${formatTime(np.currentTime)} / ${formatTime(np.duration)}`;
-      
-      const pct = (np.duration > 0) ? (np.currentTime / np.duration) * 100 : 0;
-      progressBar.style.width = pct + '%';
-      return;
-    }
-
-    // Modo 2: Última canción (Fallback)
-    const lib = (libraryCache.ts && (now - libraryCache.ts < 10000))
-      ? libraryCache : await loadLibrary();
-
-    if (lib.songs.length === 0) {
+  // 2. Renderizar UI (sin tocar el audio)
+  function updateUI() {
+    if (currentIndex < 0 || !songs[currentIndex]) {
       mainEl.style.display = 'none';
       emptyEl.style.display = 'flex';
       return;
     }
-
-    const recent = [...lib.songs].sort((a, b) => (b.date || 0) - (a.date || 0))[0];
-
+    
     mainEl.style.display = 'flex';
     emptyEl.style.display = 'none';
 
-    titleEl.textContent = recent.artist && recent.artist !== 'Desconocido'
-        ? `${recent.title} - ${recent.artist}` 
-        : recent.title;
-    timeEl.textContent = '0:00 / 0:00';
-    progressBar.style.width = '0%';
+    const song = songs[currentIndex];
+    titleEl.textContent = song.title || 'Sin título';
+    artistEl.textContent = song.artist || 'Desconocido';
+
+    btnPrev.disabled = currentIndex === 0;
+    btnNext.disabled = currentIndex === songs.length - 1;
+
+    const isPaused = audio.paused;
+    btnPlay.classList.toggle('paused', isPaused);
+    iconPlay.style.display = isPaused ? 'block' : 'none';
+    iconPause.style.display = isPaused ? 'none' : 'block';
+
+    if (audio.duration) {
+      const pct = (audio.currentTime / audio.duration) * 100;
+      progressBar.style.width = pct + '%';
+      timeEl.textContent = formatTime(audio.currentTime);
+    } else {
+      progressBar.style.width = '0%';
+      timeEl.textContent = '0:00';
+    }
   }
 
-  render();
-  setInterval(render, 1000);
+  // 3. Reproducir una canción
+  function playSong(index, autoPlay = true) {
+    if (index < 0 || index >= songs.length) return;
+
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    currentIndex = index;
+    const song = songs[currentIndex];
+    
+    objectUrl = URL.createObjectURL(song.blob);
+    audio.src = objectUrl;
+    
+    updateUI();
+
+    if (autoPlay) {
+      audio.play().catch(() => updateUI()); // Fallback si el navegador bloquea el autoplay
+    }
+  }
+
+  // 4. Sincronizar con la App principal (si está abierta)
   window.addEventListener('storage', (e) => {
-    if (e.key === NP_KEY) render();
+    if (e.key !== NP_KEY) return;
+    try {
+      const np = JSON.parse(e.newValue || '{}');
+      // Si la App empieza a reproducir, pausamos el widget
+      if (np.source === 'app' && np.playing && !audio.paused) {
+        audio.pause();
+      }
+      // Si la App cambia de canción, actualizamos los datos visuales
+      if (np.source === 'app') {
+        const idx = songs.findIndex(s => s.id === np.id);
+        if (idx !== -1 && idx !== currentIndex) {
+          playSong(idx, false); // Cargar sin reproducir (la app se encarga del audio)
+        }
+      }
+    } catch (err) {}
   });
+
+  // 5. Eventos de los controles
+  btnPlay.onclick = () => {
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+  };
+
+  btnNext.onclick = () => {
+    if (currentIndex < songs.length - 1) playSong(currentIndex + 1, true);
+  };
+
+  btnPrev.onclick = () => {
+    if (currentIndex > 0) playSong(currentIndex - 1, true);
+  };
+
+  progressBar.parentElement.onclick = (e) => {
+    if (!audio.duration) return;
+    const rect = progressBar.parentElement.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
+  };
+
+  // 6. Eventos del Audio
+  audio.addEventListener('play', updateUI);
+  audio.addEventListener('pause', updateUI);
+  audio.addEventListener('timeupdate', updateUI);
+  audio.addEventListener('ended', () => {
+    if (currentIndex < songs.length - 1) playSong(currentIndex + 1, true);
+    else updateUI();
+  });
+
+  // 7. Inicialización
+  async function init() {
+    songs = await loadSongs();
+    songs.sort((a, b) => (a.date || 0) - (b.date || 0)); // Mismo orden que la app
+
+    if (songs.length === 0) {
+      updateUI();
+      return;
+    }
+
+    // Intentar cargar la última canción que sonó
+    let startIdx = songs.length - 1;
+    const raw = localStorage.getItem(NP_KEY);
+    if (raw) {
+      try {
+        const np = JSON.parse(raw);
+        const idx = songs.findIndex(s => s.id === np.id);
+        if (idx !== -1) startIdx = idx;
+      } catch (err) {}
+    }
+
+    // Cargar en modo pausa para no asustar con audio repentino
+    playSong(startIdx, false); 
+  }
+
+  init();
 </script>
 </body>
 </html>
