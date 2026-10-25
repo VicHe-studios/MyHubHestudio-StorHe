@@ -95,7 +95,7 @@
   .btn-icon.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
   .btn-icon svg { width: 14px; height: 14px; }
 
-  /* Modal */
+  /* Modales */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
     display: none; align-items: center; justify-content: center; z-index: 100;
@@ -107,6 +107,7 @@
     display: flex; flex-direction: column; gap: 12px;
   }
   .modal h3 { margin: 0 0 8px; font-size: 16px; }
+  .modal p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
   
   input {
     width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
@@ -118,12 +119,23 @@
   .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
   .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
   .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
   .btn:hover { filter: brightness(1.1); }
 
-  .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
-    background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0;
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 10000;
+    display: flex; align-items: center; gap: 8px;
   }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
@@ -156,8 +168,6 @@
     <div class="list-container" id="list-container"></div>
   </div>
 
-  <div class="app-credit">Hecho con ❤️ por VicHeStudios</div>
-
   <!-- Modal para agregar/editar -->
   <div class="modal-overlay" id="modal">
     <div class="modal">
@@ -172,6 +182,21 @@
     </div>
   </div>
 
+  <!-- Modal de Confirmación -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <h3 id="confirm-title">Confirmar</h3>
+      <p id="confirm-message">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn danger" id="btn-accept-confirm">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
 <script>
   // Sincronización de Tema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
@@ -183,7 +208,35 @@
     }
   });
 
-  // Utilidades de cifrado muy básico (Base64 + Invertido) para no guardar texto plano
+  // --- SISTEMA DE TOAST ---
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // --- SISTEMA DE CONFIRMACIÓN ---
+  let confirmCallback = null;
+  function showConfirm(title, message, callback) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    confirmCallback = callback;
+    document.getElementById('modal-confirm').classList.add('active');
+  }
+  document.getElementById('btn-cancel-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    confirmCallback = null;
+  };
+  document.getElementById('btn-accept-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  };
+
+  // Utilidades de cifrado muy básico
   const encode = (str) => btoa(str.split('').reverse().join(''));
   const decode = (str) => atob(str).split('').reverse().join('');
 
@@ -210,17 +263,16 @@
     if (!val) return;
 
     if (!storedKey) {
-      // Primera vez
       localStorage.setItem('myhub_passkey', encode(val));
       masterKey = val;
       unlock();
     } else {
-      // Ya existe
       if (encode(val) === storedKey) {
         masterKey = val;
         unlock();
       } else {
-        alert('Clave incorrecta');
+        // REEMPLAZO DE ALERT
+        showToast('Clave incorrecta', 'error');
       }
     }
   };
@@ -295,14 +347,17 @@
 
   window.copyPwd = (i) => {
     navigator.clipboard.writeText(passwords[i].pass);
-    alert('Contraseña copiada al portapapeles');
+    // REEMPLAZO DE ALERT
+    showToast('Contraseña copiada');
   };
 
   window.deletePwd = (i) => {
-    if (confirm('¿Eliminar esta contraseña?')) {
+    // REEMPLAZO DE CONFIRM
+    showConfirm('Eliminar contraseña', '¿Estás seguro de que deseas eliminar esta contraseña?', () => {
       passwords.splice(i, 1);
       saveData();
-    }
+      showToast('Contraseña eliminada');
+    });
   };
 
   window.editPwd = (i) => {
@@ -332,7 +387,8 @@
     const user = document.getElementById('inp-user').value.trim();
     const pass = document.getElementById('inp-pass').value;
 
-    if (!site || !user || !pass) return alert('Rellena todos los campos');
+    // REEMPLAZO DE ALERT
+    if (!site || !user || !pass) return showToast('Rellena todos los campos', 'error');
 
     if (editIndex > -1) {
       passwords[editIndex] = { site, user, pass };
@@ -342,6 +398,7 @@
     
     saveData();
     modal.classList.remove('active');
+    showToast('Contraseña guardada');
   };
 </script>
 </body>
