@@ -531,6 +531,7 @@
             audio.pause();
             currentSong = null;
             resetPlayerUI();
+            localStorage.removeItem(NP_KEY); // ← limpia el widget si borras lo que sonaba
           }
           loadData();
         }
@@ -751,6 +752,59 @@
   }
 
   document.getElementById('btn-cancel-playlist').onclick = () => modalPlaylist.classList.remove('active');
+
+  // ============================================================
+  // 9. Sincronización con el Widget de Spoti-vic (NUEVO)
+  // ============================================================
+  // La app escribe un pequeño "estado actual" en localStorage.
+  // El widget (Widgets/Spoti.html) lo lee y pinta canción + progreso.
+  // Si el timestamp deja de refrescarse >5s, el widget pasa a "Pausado".
+  // Si nunca escribimos, el widget cae automáticamente a su modo
+  // "Última en biblioteca" (que lee IndexedDB por su cuenta).
+  const NP_KEY = 'spoti_vic_nowplaying';
+
+  function syncWidgetNowPlaying() {
+    if (!currentSong) {
+      localStorage.removeItem(NP_KEY);
+      return;
+    }
+    try {
+      localStorage.setItem(NP_KEY, JSON.stringify({
+        id: currentSong.id,
+        title: currentSong.title,
+        artist: currentSong.artist || 'Desconocido',
+        icon: currentSong.icon || 'music',
+        playing: !audio.paused,
+        currentTime: audio.currentTime || 0,
+        duration: audio.duration || 0,
+        ts: Date.now()
+      }));
+    } catch (e) { /* cuota llena o modo privado */ }
+  }
+
+  audio.addEventListener('play',           syncWidgetNowPlaying);
+  audio.addEventListener('pause',          syncWidgetNowPlaying);
+  audio.addEventListener('ended',          syncWidgetNowPlaying);
+  audio.addEventListener('seeked',         syncWidgetNowPlaying);
+  audio.addEventListener('loadedmetadata', syncWidgetNowPlaying);
+
+  // Refresco periódico durante la reproducción para que el widget
+  // no marque como "pausado" si el audio sigue sonando sin eventos.
+  let _lastNPSync = 0;
+  audio.addEventListener('timeupdate', () => {
+    if (Date.now() - _lastNPSync > 2000) {
+      _lastNPSync = Date.now();
+      syncWidgetNowPlaying();
+    }
+  });
+
+  // Al editar el título/artista/icono de la canción que suena,
+  // refrescamos el widget para que se vea el cambio en vivo.
+  const _originalSync = syncWidgetNowPlaying;
+  // (No hace falta envolver: el listener 'pause'/'play' lo hará solo
+  //  la próxima vez que el usuario interactúe, pero por si acaso
+  //  exponemos la función para debug.)
+  window._spotiSyncWidget = _originalSync;
 
 </script>
 </body>
