@@ -12,6 +12,7 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
+    --danger: #ef4444;
   }
   
   html[data-modo="oscuro"] {
@@ -63,17 +64,16 @@
   .btn:hover { background: var(--line); }
   .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
   .btn.primary:hover { filter: brightness(1.1); }
-  .btn.danger { color: #ef4444; }
+  .btn.danger { color: var(--danger); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  /* Inputs de tiempo corregidos */
+  /* Inputs de tiempo */
   .time-inputs { display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; align-items: center; }
   .time-inputs input {
     width: 70px; text-align: center; font-size: 24px; font-weight: 700;
     padding: 10px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--field); color: var(--text); outline: none;
     font-family: inherit;
-    /* Ocultar flechitas nativas */
     -moz-appearance: textfield;
     appearance: textfield;
   }
@@ -95,10 +95,20 @@
   }
   .lap-item span:last-child { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-  .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); padding: 8px;
-    background: var(--card); border-top: 1px solid var(--line); flex-shrink: 0;
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 1000;
+    display: flex; align-items: center; gap: 8px;
   }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 
   @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
   ::-webkit-scrollbar { width: 4px; }
@@ -146,9 +156,8 @@
     </div>
   </div>
 
-  <div class="app-credit">
-    Hecho con ❤️ por VicHeStudios
-  </div>
+  <!-- TOAST ELEMENT -->
+  <div class="toast" id="toast"></div>
 
 <script>
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
@@ -159,6 +168,16 @@
       document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
     }
   });
+
+  // --- TOAST SYSTEM ---
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
 
   document.querySelectorAll('.tab').forEach(tab => {
     tab.onclick = () => {
@@ -221,7 +240,7 @@
     swLapsEl.prepend(lapDiv); lapCount++;
   };
 
-  // Temporizador (Lógica mejorada)
+  // Temporizador
   let tInterval, tRemaining = 300, isTRunning = false;
   const tMinInput = document.getElementById('t-min'), tSecInput = document.getElementById('t-sec');
   const timerTimeEl = document.getElementById('timer-time'), tStartBtn = document.getElementById('t-start'), tResetBtn = document.getElementById('t-reset');
@@ -232,7 +251,6 @@
     timerTimeEl.textContent = `${m}:${s}`;
   };
 
-  // Validar que solo escriban números
   const validateInput = (input, max) => {
     input.value = input.value.replace(/[^0-9]/g, '');
     if (input.value.length > 0) {
@@ -283,7 +301,8 @@
           osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
           osc.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.5);
           
-          setTimeout(() => alert('¡Tiempo terminado!'), 100);
+          // REEMPLAZO DE ALERT
+          showToast('¡Tiempo terminado!', 'error');
         }
       }, 1000);
     }
