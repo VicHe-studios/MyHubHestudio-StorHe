@@ -6,6 +6,6 @@
   "autor": "VicHeStudios",
   "descripcion": "Tu reproductor de música local con playlists y personalización",
   "widgets": [
-    { "file": "Widgets/Spoti.html", "size": "2x2" }
+    { "file": "Widgets/Spotvic.html", "size": "2x2" }
   ]
 }
