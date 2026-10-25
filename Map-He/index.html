@@ -13,6 +13,7 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
+    --danger: #ef4444;
   }
   html[data-modo="oscuro"] {
     --text: #f4f4f6;
@@ -60,7 +61,7 @@
 
   #map { flex: 1; width: 100%; z-index: 1; background: var(--field); }
 
-  /* Leaflet Dark Mode fixes (Para que los controles se vean bien) */
+  /* Leaflet Dark Mode fixes */
   html[data-modo="oscuro"] .leaflet-popup-content-wrapper, 
   html[data-modo="oscuro"] .leaflet-popup-tip { 
     background: var(--card); color: var(--text); 
@@ -80,6 +81,21 @@
     z-index: 1000;
   }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 9999;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 </style>
 </head>
 <body>
@@ -106,10 +122,23 @@
     Mapas por <a href="https://www.esri.com/" target="_blank">Esri</a> y <a href="https://leafletjs.com/" target="_blank">Leaflet</a>
   </div>
 
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
     
+    // --- SISTEMA DE TOAST ---
+    let toastTimer = null;
+    function showToast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.innerHTML = msg;
+      el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
+
     let map;
     let tileLayer;
     let marker = null;
@@ -118,13 +147,13 @@
     map = L.map('map', { zoomControl: false }).setView([20, 0], 2);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Función para cambiar las capas del mapa según el tema (Esri Canvas - NO API KEY)
+    // Función para cambiar las capas del mapa según el tema
     const setMapTheme = (modo) => {
       if (tileLayer) map.removeLayer(tileLayer);
       
       const isDark = modo === 'oscuro';
       
-      // Esri World Canvas (Light / Dark) - Completamente gratis, sin API Key
+      // Esri World Canvas (Light / Dark)
       const url = isDark 
         ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}'
         : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
@@ -135,10 +164,8 @@
       }).addTo(map);
     };
 
-    // Iniciar en claro por defecto
     setMapTheme('claro');
 
-    // Escuchar cambios de tema
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'myhub:tema:res') {
         document.documentElement.dataset.modo = e.data.modo;
@@ -167,10 +194,12 @@
           const place = data[0];
           setMarker(place.lat, place.lon, place.display_name);
         } else {
-          alert('No se encontraron resultados para esa búsqueda.');
+          // REEMPLAZO DE ALERT
+          showToast('No se encontraron resultados.', 'error');
         }
       } catch (err) {
-        alert('Error al conectar con el servicio de mapas.');
+        // REEMPLAZO DE ALERT
+        showToast('Error al conectar con el servicio.', 'error');
       }
     };
 
@@ -181,7 +210,8 @@
 
     document.getElementById('btn-locate').onclick = () => {
       if (!navigator.geolocation) {
-        return alert('La geolocalización no está soportada por tu navegador.');
+        // REEMPLAZO DE ALERT
+        return showToast('La geolocalización no está soportada.', 'error');
       }
       
       navigator.geolocation.getCurrentPosition(
@@ -190,7 +220,8 @@
           setMarker(latitude, longitude, "¡Estás aquí!");
         },
         () => {
-          alert('No se pudo obtener tu ubicación. Verifica los permisos.');
+          // REEMPLAZO DE ALERT
+          showToast('No se pudo obtener tu ubicación.', 'error');
         }
       );
     };
