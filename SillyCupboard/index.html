@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100vh; width: 100%; margin: 0; overflow: hidden;
+  }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+  }
+
+  /* Scrollbars finas de MyHub */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .header {
+    padding: 10px 12px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header h1 { margin: 0; font-size: 14px; font-weight: 700; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none;
+    padding: 6px 10px; border-radius: 8px;
+    font-family: inherit; font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: 0.2s; white-space: nowrap;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+
+  .btn-secondary {
+    background: var(--field); color: var(--text);
+    border: 1px solid var(--line); padding: 6px 10px;
+    border-radius: 8px; font-family: inherit;
+    font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: 0.2s; white-space: nowrap;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-secondary:hover { filter: brightness(1.05); }
+
+  .btn-danger {
+    background: var(--danger); color: #fff; border: none;
+    padding: 6px 10px; border-radius: 8px;
+    font-family: inherit; font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: 0.2s;
+  }
+  .btn-danger:hover { filter: brightness(1.1); }
+
+  .btn-icon {
+    background: transparent; border: none; color: var(--muted);
+    cursor: pointer; padding: 4px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .btn-icon:hover { background: var(--field); color: var(--text); }
+
+  .tabs {
+    display: flex; gap: 6px; padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+  }
+  .tab {
+    background: transparent; border: none; padding: 4px 10px;
+    border-radius: 6px; font: inherit; font-weight: 600;
+    font-size: 12px; color: var(--muted); cursor: pointer;
+    transition: 0.2s;
+  }
+  .tab.active { background: var(--accent-soft); color: var(--accent); }
+
+  .content {
+    flex: 1; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #view-prendas, #view-outfits {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #view-prendas[hidden], #view-outfits[hidden] { display: none; }
+
+  .filters {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  .filters .input { flex: 1; min-width: 90px; }
+
+  .input {
+    padding: 8px 10px; border-radius: 8px;
+    border: 1.5px solid var(--line);
+    background: var(--field); color: var(--text);
+    font-family: inherit; font-size: 12px; outline: none;
+    transition: border-color 0.2s; width: 100%;
+  }
+  .input:focus { border-color: var(--accent); }
+
+  .storage-badge {
+    font-size: 10px; font-weight: 600; color: var(--muted);
+    background: var(--field); padding: 2px 6px; border-radius: 6px;
+    border: 1px solid var(--line); white-space: nowrap;
+  }
+  .storage-badge.warn { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+  }
+  .card {
+    background: var(--field); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    display: flex; flex-direction: column;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card-img {
+    aspect-ratio: 1 / 1; background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; }
+  .card-img svg { width: 30px; height: 30px; color: var(--muted); opacity: 0.6; }
+  .card-body { padding: 6px 8px; display: flex; flex-direction: column; gap: 3px; }
+  .card-name {
+    font-size: 12px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-tags { display: flex; gap: 3px; flex-wrap: wrap; }
+  .tag {
+    font-size: 9px; padding: 1px 4px; border-radius: 4px;
+    background: var(--card); border: 1px solid var(--line);
+    color: var(--muted); white-space: nowrap;
+  }
+
+  .outfit-card .card-img {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 2px; padding: 2px;
+  }
+  /* NUEVO: Si solo hay 1 prenda, ocupa todo el espacio */
+  .outfit-card .card-img.single {
+    grid-template-columns: 1fr;
+  }
+  
+  .outfit-card .card-img img,
+  .outfit-card .card-img .mini-ph {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 4px;
+  }
+  .outfit-card .card-img .mini-ph {
+    background: var(--card); display: flex;
+    align-items: center; justify-content: center;
+  }
+  .outfit-card .card-img .mini-ph svg {
+    width: 18px; height: 18px; color: var(--muted); opacity: 0.6;
+  }
+  .outfit-count { font-size: 10px; color: var(--muted); }
+
+  .empty {
+    text-align: center; color: var(--muted); font-size: 12px;
+    padding: 20px 8px; line-height: 1.4;
+  }
+  .empty svg {
+    width: 30px; height: 30px; opacity: 0.5; margin-bottom: 4px;
+  }
+  .empty p { margin: 4px 0 0; }
+
+  .outfits-head { display: flex; justify-content: flex-end; }
+
+  /* Modales */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px; z-index: 50;
+  }
+  .modal-overlay[hidden] { display: none; }
+  .modal {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; width: 100%; max-width: 340px;
+    max-height: 90vh; display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  }
+  .modal-head {
+    padding: 12px 14px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-head h2 { margin: 0; font-size: 14px; font-weight: 700; }
+  .modal-body {
+    padding: 12px 14px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .modal-foot {
+    padding: 10px 14px; border-top: 1px solid var(--line);
+    display: flex; gap: 6px; justify-content: flex-end;
+    flex-wrap: wrap; align-items: center;
+  }
+  .modal-foot .left { margin-right: auto; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; font-weight: 600; color: var(--muted); }
+
+  .preview {
+    width: 100%; aspect-ratio: 1 / 1; border-radius: 10px;
+    border: 1.5px dashed var(--line); background: var(--field);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; color: var(--muted); font-size: 12px;
+    text-align: center; padding: 8px; margin-bottom: 6px;
+  }
+  .preview img { width: 100%; height: 100%; object-fit: cover; }
+
+  .check-list {
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 200px; overflow-y: auto; padding: 2px;
+  }
+  .check-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 8px; border-radius: 6px;
+    background: var(--field); border: 1px solid var(--line);
+    font-size: 12px; cursor: pointer;
+  }
+  .check-item input { accent-color: var(--accent); flex-shrink: 0; }
+  .check-item .mini-thumb {
+    width: 24px; height: 24px; border-radius: 4px;
+    object-fit: cover; background: var(--card); flex-shrink: 0;
+  }
+  .check-item .mini-ph {
+    width: 24px; height: 24px; border-radius: 4px;
+    background: var(--card); display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .check-item .mini-ph svg {
+    width: 14px; height: 14px; color: var(--muted); opacity: 0.6;
+  }
+  .check-item span {
+    flex: 1; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Toast */
+  .local-toast {
+    position: fixed; left: 50%; bottom: 18px;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1), opacity 0.3s;
+    pointer-events: none; z-index: 100;
+    max-width: 85%; text-align: center;
+    opacity: 0;
+  }
+  .local-toast.show {
+    opacity: 1; transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <h1>Silly cupboard</h1>
+      <div class="storage-badge" id="storage-badge">0 MB / 5 MB</div>
+    </div>
+    <button class="btn-primary" id="btn-add">+ Añadir prenda</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="prendas">Prendas</button>
+    <button class="tab" data-tab="outfits">Outfits</button>
+  </div>
+
+  <div class="content" id="content">
+    <div id="view-prendas">
+      <div class="filters">
+        <input class="input" id="search" type="text" placeholder="Buscar...">
+        <select class="input" id="filter-cat"></select>
+        <select class="input" id="filter-season"></select>
+      </div>
+      <div class="grid" id="garments-grid"></div>
+      <div class="empty" id="empty-garments" hidden></div>
+    </div>
+
+    <div id="view-outfits" hidden>
+      <div class="outfits-head">
+        <button class="btn-secondary" id="btn-add-outfit">+ Nuevo outfit</button>
+      </div>
+      <div class="grid" id="outfits-grid"></div>
+      <div class="empty" id="empty-outfits" hidden></div>
+    </div>
+  </div>
+
+  <!-- Modal prenda -->
+  <div class="modal-overlay" id="modal-garment" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="garment-title">Nueva prenda</h2>
+        <button class="btn-icon" id="btn-close-garment" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="g-nombre">Nombre</label>
+          <input class="input" id="g-nombre" type="text" placeholder="Ej. Camisa azul">
+        </div>
+        <div class="field">
+          <label for="g-categoria">Categoría</label>
+          <select class="input" id="g-categoria"></select>
+        </div>
+        <div class="field">
+          <label for="g-color">Color</label>
+          <select class="input" id="g-color"></select>
+        </div>
+        <div class="field">
+          <label for="g-temporada">Temporada</label>
+          <select class="input" id="g-temporada"></select>
+        </div>
+        <div class="field">
+          <label>Imagen</label>
+          <div class="preview" id="g-preview">Sin imagen</div>
+          <div style="display: flex; gap: 8px;">
+            <label class="btn-secondary" style="flex:1; cursor:pointer;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Subir
+              <input type="file" id="g-imagen" accept="image/*" hidden>
+            </label>
+            <button class="btn-secondary" id="btn-paste-image" style="flex:1;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+              Pegar
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-danger left" id="btn-delete-garment" hidden>Eliminar</button>
+        <button class="btn-secondary" id="btn-cancel-garment">Cancelar</button>
+        <button class="btn-primary" id="btn-save-garment">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal outfit -->
+  <div class="modal-overlay" id="modal-outfit" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="outfit-title">Nuevo outfit</h2>
+        <button class="btn-icon" id="btn-close-outfit" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="o-nombre">Nombre del outfit</label>
+          <input class="input" id="o-nombre" type="text" placeholder="Ej. Look de primavera">
+        </div>
+        <div class="field">
+          <label>Prendas</label>
+          <div class="check-list" id="check-list"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-danger left" id="btn-delete-outfit" hidden>Eliminar</button>
+        <button class="btn-secondary" id="btn-cancel-outfit">Cancelar</button>
+        <button class="btn-primary" id="btn-save-outfit">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal confirmar -->
+  <div class="modal-overlay" id="modal-confirm" hidden>
+    <div class="modal" style="max-width:300px">
+      <div class="modal-head">
+        <h2>Confirmar</h2>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-msg" style="margin:0;font-size:13px;line-height:1.5"></p>
+      </div>
+      <div class="modal-foot">
+        <button class="btn-secondary" id="btn-confirm-no">Cancelar</button>
+        <button class="btn-danger" id="btn-confirm-yes">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* ===== 1. Sincronización de tema ===== */
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  }
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  /* ===== 2. Utilidades ===== */
+  const $ = (sel, ctx = document) => ctx.querySelector(sel);
+  const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  const CATEGORIAS = ['Camiseta', 'Pantalón', 'Vestido', 'Abrigo', 'Calzado', 'Accesorio', 'Otro'];
+  const COLORES = ['Negro', 'Blanco', 'Gris', 'Rojo', 'Azul', 'Verde', 'Amarillo', 'Rosa', 'Morado', 'Café', 'Beige', 'Multicolor'];
+  const TEMPORADAS = ['Primavera', 'Verano', 'Otoño', 'Invierno', 'Todo el año'];
+  
+  const MAX_STORAGE = 5 * 1024 * 1024; // 5MB
+
+  const shirtSvg = () => `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>
+    </svg>`;
+
+  let toastTimer = null;
+  function toast(msg) {
+    if (window.MyHub && typeof window.MyHub.toast === 'function') {
+      window.MyHub.toast(msg);
+      return;
+    }
+    let t = document.getElementById('local-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'local-toast';
+      t.className = 'local-toast';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  /* ===== 3. Compresión de Imágenes ===== */
+  async function compressImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(img.src);
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        const MAX_DIM = 600;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob((blob) => {
+          resolve(blob);
+        }, 'image/jpeg', 0.55);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(img.src);
+        reject(new Error('Error al cargar la imagen'));
+      };
+    });
+  }
+
+  /* ===== 4. IndexedDB ===== */
+  const dbP = new Promise((resolve, reject) => {
+    const req = indexedDB.open('silly-cupboard-db', 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('prendas')) db.createObjectStore('prendas', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('outfits')) db.createObjectStore('outfits', { keyPath: 'id' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+
+  async function dbGetAll(storeName) {
+    const db = await dbP;
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => rej(req.error);
+    });
+  }
+
+  async function dbPut(storeName, val) {
+    const db = await dbP;
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).put(val);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+
+  async function dbDelete(storeName, id) {
+    const db = await dbP;
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).delete(id);
+      tx.oncomplete = () => res();
+      tx.onerror = () => rej(tx.error);
+    });
+  }
+
+  /* ===== 5. Estado ===== */
+  let prendas = [];
+  let outfits = [];
+  let activeTab = 'prendas';
+  let editingGarmentId = null;
+  let editingOutfitId = null;
+  let tempImageBlob = null;
+  let currentPreviewUrl = null;
+  let confirmResolve = null;
+
+  const urlCache = new Map();
+
+  function getImageUrl(id, blob) {
+    if (!blob) return null;
+    if (urlCache.has(id)) return urlCache.get(id);
+    const url = URL.createObjectURL(blob);
+    urlCache.set(id, url);
+    return url;
+  }
+
+  function revokeImage(id) {
+    const u = urlCache.get(id);
+    if (u) {
+      URL.revokeObjectURL(u);
+      urlCache.delete(id);
+    }
+  }
+
+  function updateStorageInfo() {
+    const totalBytes = prendas.reduce((acc, p) => acc + (p.imagenBlob ? p.imagenBlob.size : 0), 0);
+    const mb = (totalBytes / (1024 * 1024)).toFixed(2);
+    const badge = $('#storage-badge');
+    badge.textContent = `${mb} MB / 5 MB`;
+    badge.className = 'storage-badge' + (totalBytes > MAX_STORAGE * 0.9 ? ' warn' : '');
+  }
+
+  /* ===== 6. Referencias DOM ===== */
+  const els = {
+    gridPrendas: $('#garments-grid'),
+    emptyPrendas: $('#empty-garments'),
+    gridOutfits: $('#outfits-grid'),
+    emptyOutfits: $('#empty-outfits'),
+    search: $('#search'),
+    filterCat: $('#filter-cat'),
+    filterSeason: $('#filter-season'),
+    modalGarment: $('#modal-garment'),
+    garmentTitle: $('#garment-title'),
+    gNombre: $('#g-nombre'),
+    gCategoria: $('#g-categoria'),
+    gColor: $('#g-color'),
+    gTemporada: $('#g-temporada'),
+    gFile: $('#g-imagen'),
+    gPreview: $('#g-preview'),
+    btnPaste: $('#btn-paste-image'),
+    btnDeleteGarment: $('#btn-delete-garment'),
+    modalOutfit: $('#modal-outfit'),
+    outfitTitle: $('#outfit-title'),
+    oNombre: $('#o-nombre'),
+    checkList: $('#check-list'),
+    btnDeleteOutfit: $('#btn-delete-outfit'),
+    modalConfirm: $('#modal-confirm'),
+    confirmMsg: $('#confirm-msg')
+  };
+
+  /* ===== 7. Selects ===== */
+  function fillSelect(select, options, allLabel = null) {
+    select.innerHTML = '';
+    if (allLabel) {
+      const o = document.createElement('option');
+      o.value = 'all';
+      o.textContent = allLabel;
+      select.appendChild(o);
+    }
+    options.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = v;
+      select.appendChild(o);
+    });
+  }
+
+  fillSelect(els.filterCat, CATEGORIAS, 'Categorías');
+  fillSelect(els.filterSeason, TEMPORADAS, 'Temporadas');
+  fillSelect(els.gCategoria, CATEGORIAS);
+  fillSelect(els.gColor, COLORES);
+  fillSelect(els.gTemporada, TEMPORADAS);
+
+  /* ===== 8. Tabs ===== */
+  function updateTabs() {
+    $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+    $('#view-prendas').hidden = activeTab !== 'prendas';
+    $('#view-outfits').hidden = activeTab !== 'outfits';
+  }
+
+  $$('.tab').forEach(btn => {
+    btn.onclick = () => {
+      activeTab = btn.dataset.tab;
+      updateTabs();
+    };
+  });
+
+  /* ===== 9. Render prendas ===== */
+  function setEmpty(el, html) {
+    el.innerHTML = `${shirtSvg()}<p>${html}</p>`;
+    el.hidden = false;
+  }
+
+  function createGarmentCard(p) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = () => openGarmentModal(p.id);
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'card-img';
+    const url = getImageUrl(p.id, p.imagenBlob);
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = p.nombre;
+      imgWrap.appendChild(img);
+    } else {
+      imgWrap.innerHTML = shirtSvg();
+    }
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    const name = document.createElement('div');
+    name.className = 'card-name';
+    name.textContent = p.nombre;
+
+    const tags = document.createElement('div');
+    tags.className = 'card-tags';
+    [p.categoria, p.color, p.temporada].filter(Boolean).forEach(t => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = t;
+      tags.appendChild(tag);
+    });
+
+    body.appendChild(name);
+    body.appendChild(tags);
+    card.appendChild(imgWrap);
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderGarments() {
+    const q = els.search.value.toLowerCase().trim();
+    const cat = els.filterCat.value;
+    const season = els.filterSeason.value;
+
+    const list = prendas
+      .filter(p => {
+        if (q && !p.nombre.toLowerCase().includes(q)) return false;
+        if (cat !== 'all' && p.categoria !== cat) return false;
+        if (season !== 'all' && p.temporada !== season) return false;
+        return true;
+      })
+      .sort((a, b) => (b.creado || 0) - (a.creado || 0));
+
+    els.gridPrendas.innerHTML = '';
+    list.forEach(p => els.gridPrendas.appendChild(createGarmentCard(p)));
+
+    if (list.length === 0) {
+      const msg = prendas.length === 0
+        ? 'Tu armario está vacío.<br>Añade tu primera prenda con el botón de arriba.'
+        : 'No hay prendas que coincidan con los filtros.';
+      setEmpty(els.emptyPrendas, msg);
+    } else {
+      els.emptyPrendas.hidden = true;
+    }
+    
+    updateStorageInfo();
+  }
+
+  /* ===== 10. Render outfits ===== */
+  function createOutfitCard(o) {
+    const card = document.createElement('div');
+    card.className = 'card outfit-card';
+    card.onclick = () => openOutfitModal(o.id);
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'card-img';
+
+    const gs = o.garmentIds
+      .map(id => prendas.find(x => x.id === id))
+      .filter(Boolean)
+      .slice(0, 4);
+
+    if (gs.length === 0) {
+      const ph = document.createElement('div');
+      ph.className = 'mini-ph';
+      ph.innerHTML = shirtSvg();
+      imgWrap.appendChild(ph);
+    } else {
+      // SI SOLO HAY 1 PRENDA, LE DAMOS LA CLASE SINGLE PARA QUE OCUPE TODO
+      if (gs.length === 1) imgWrap.classList.add('single');
+      
+      gs.forEach(g => {
+        const url = getImageUrl(g.id, g.imagenBlob);
+        if (url) {
+          const im = document.createElement('img');
+          im.src = url;
+          im.alt = g.nombre;
+          imgWrap.appendChild(im);
+        } else {
+          const d = document.createElement('div');
+          d.className = 'mini-ph';
+          d.innerHTML = shirtSvg();
+          imgWrap.appendChild(d);
+        }
+      });
+    }
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    const name = document.createElement('div');
+    name.className = 'card-name';
+    name.textContent = o.nombre;
+
+    const count = document.createElement('div');
+    count.className = 'outfit-count';
+    const total = o.garmentIds.filter(id => prendas.some(p => p.id === id)).length;
+    count.textContent = total + (total === 1 ? ' prenda' : ' prendas');
+
+    body.appendChild(name);
+    body.appendChild(count);
+    card.appendChild(imgWrap);
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderOutfits() {
+    const list = outfits.slice().sort((a, b) => (b.creado || 0) - (a.creado || 0));
+    els.gridOutfits.innerHTML = '';
+    list.forEach(o => els.gridOutfits.appendChild(createOutfitCard(o)));
+
+    if (list.length === 0) {
+      setEmpty(els.emptyOutfits, 'Aún no tienes outfits.<br>Crea uno combinando tus prendas.');
+    } else {
+      els.emptyOutfits.hidden = true;
+    }
+  }
+
+  function renderAll() {
+    renderGarments();
+    renderOutfits();
+  }
+
+  /* ===== 11. Modales genéricos ===== */
+  function showModal(m) { m.hidden = false; }
+  function hideModal(m) { m.hidden = true; }
+
+  function askConfirm(msg) {
+    return new Promise(resolve => {
+      confirmResolve = resolve;
+      els.confirmMsg.textContent = msg;
+      showModal(els.modalConfirm);
+    });
+  }
+
+  function resolveConfirm(value) {
+    hideModal(els.modalConfirm);
+    if (confirmResolve) {
+      const r = confirmResolve;
+      confirmResolve = null;
+      r(value);
+    }
+  }
+
+  $('#btn-confirm-yes').onclick = () => resolveConfirm(true);
+  $('#btn-confirm-no').onclick = () => resolveConfirm(false);
+
+  /* ===== 12. Modal prenda ===== */
+  function setPreview(blob) {
+    if (currentPreviewUrl) {
+      URL.revokeObjectURL(currentPreviewUrl);
+      currentPreviewUrl = null;
+    }
+    els.gPreview.innerHTML = '';
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      currentPreviewUrl = url;
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = 'Vista previa';
+      els.gPreview.appendChild(img);
+    } else {
+      els.gPreview.textContent = 'Sin imagen';
+    }
+  }
+
+  function openGarmentModal(id = null) {
+    editingGarmentId = id;
+    const p = id ? prendas.find(x => x.id === id) : null;
+
+    els.garmentTitle.textContent = p ? 'Editar prenda' : 'Nueva prenda';
+    els.gNombre.value = p?.nombre || '';
+    els.gCategoria.value = p?.categoria || CATEGORIAS[0];
+    els.gColor.value = p?.color || COLORES[0];
+    els.gTemporada.value = p?.temporada || 'Todo el año';
+    els.gFile.value = '';
+
+    tempImageBlob = p?.imagenBlob || null;
+    setPreview(tempImageBlob);
+
+    els.btnDeleteGarment.hidden = !p;
+    showModal(els.modalGarment);
+    setTimeout(() => els.gNombre.focus(), 50);
+  }
+
+  function closeGarmentModal() {
+    hideModal(els.modalGarment);
+    tempImageBlob = null;
+    editingGarmentId = null;
+    if (currentPreviewUrl) {
+      URL.revokeObjectURL(currentPreviewUrl);
+      currentPreviewUrl = null;
+    }
+  }
+
+  $('#btn-add').onclick = () => openGarmentModal();
+  $('#btn-cancel-garment').onclick = closeGarmentModal;
+  $('#btn-close-garment').onclick = closeGarmentModal;
+
+  function checkSize(blob) {
+    if (!blob) return true;
+    const currentSize = prendas.reduce((acc, p) => acc + (p.imagenBlob ? p.imagenBlob.size : 0), 0);
+    const existingSize = editingGarmentId ? (prendas.find(x => x.id === editingGarmentId)?.imagenBlob?.size || 0) : 0;
+    const newTotal = currentSize - existingSize + blob.size;
+    
+    if (newTotal > MAX_STORAGE) {
+      toast('Supera el límite de 5MB para imágenes');
+      return false;
+    }
+    return true;
+  }
+
+  els.gFile.onchange = async () => {
+    const f = els.gFile.files[0];
+    if (f) {
+      try {
+        toast('Optimizando imagen...');
+        const compressedBlob = await compressImage(f);
+        if (!checkSize(compressedBlob)) return;
+        tempImageBlob = compressedBlob;
+        setPreview(compressedBlob);
+      } catch (err) {
+        toast('Error al procesar la imagen');
+      }
+    }
+  };
+
+  els.btnPaste.onclick = async () => {
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find(type => type.startsWith('image/'));
+        if (imageType) {
+          const rawBlob = await item.getType(imageType);
+          toast('Optimizando imagen...');
+          const compressedBlob = await compressImage(rawBlob);
+          if (!checkSize(compressedBlob)) return;
+          tempImageBlob = compressedBlob;
+          setPreview(compressedBlob);
+          toast('Imagen pegada');
+          return;
+        }
+      }
+      toast('No hay imágenes en el portapapeles');
+    } catch (err) {
+      toast('No se pudo leer el portapapeles');
+    }
+  };
+
+  // Soporte global para Ctrl+V dentro del modal
+  window.addEventListener('paste', async (e) => {
+    if (els.modalGarment.hidden) return;
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const rawBlob = items[i].getAsFile();
+        toast('Optimizando imagen...');
+        const compressedBlob = await compressImage(rawBlob);
+        if (!checkSize(compressedBlob)) return;
+        tempImageBlob = compressedBlob;
+        setPreview(compressedBlob);
+        toast('Imagen pegada');
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
+  $('#btn-save-garment').onclick = async () => {
+    const nombre = els.gNombre.value.trim();
+    if (!nombre) {
+      toast('Ponle un nombre a la prenda');
+      els.gNombre.focus();
+      return;
+    }
+
+    const existing = editingGarmentId ? prendas.find(x => x.id === editingGarmentId) : null;
+    const id = editingGarmentId || ('g_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+
+    const obj = {
+      id,
+      nombre,
+      categoria: els.gCategoria.value,
+      color: els.gColor.value,
+      temporada: els.gTemporada.value,
+      imagenBlob: tempImageBlob || null,
+      creado: existing?.creado || Date.now()
+    };
+
+    await dbPut('prendas', obj);
+    revokeImage(id);
+    prendas = await dbGetAll('prendas');
+    closeGarmentModal();
+    renderGarments();
+    renderOutfits();
+    toast(existing ? 'Prenda actualizada' : 'Prenda añadida');
+  };
+
+  $('#btn-delete-garment').onclick = async () => {
+    if (!editingGarmentId) return;
+    const ok = await askConfirm('¿Eliminar esta prenda? También se quitará de tus outfits.');
+    if (!ok) return;
+
+    const id = editingGarmentId;
+    await dbDelete('prendas', id);
+    revokeImage(id);
+
+    const affected = outfits.filter(o => o.garmentIds.includes(id));
+    for (const o of affected) {
+      o.garmentIds = o.garmentIds.filter(gid => gid !== id);
+      await dbPut('outfits', o);
+    }
+
+    prendas = await dbGetAll('prendas');
+    outfits = await dbGetAll('outfits');
+    closeGarmentModal();
+    renderAll();
+    toast('Prenda eliminada');
+  };
+
+  /* ===== 13. Modal outfit ===== */
+  function openOutfitModal(id = null) {
+    editingOutfitId = id;
+    const o = id ? outfits.find(x => x.id === id) : null;
+
+    els.outfitTitle.textContent = o ? 'Editar outfit' : 'Nuevo outfit';
+    els.oNombre.value = o?.nombre || '';
+    els.btnDeleteOutfit.hidden = !o;
+
+    const list = els.checkList;
+    list.innerHTML = '';
+
+    if (prendas.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.style.padding = '12px';
+      empty.textContent = 'Añade prendas primero para crear outfits.';
+      list.appendChild(empty);
+    } else {
+      prendas
+        .slice()
+        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+        .forEach(p => {
+          const label = document.createElement('label');
+          label.className = 'check-item';
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.value = p.id;
+          cb.checked = o ? o.garmentIds.includes(p.id) : false;
+
+          const url = getImageUrl(p.id, p.imagenBlob);
+          if (url) {
+            const im = document.createElement('img');
+            im.className = 'mini-thumb';
+            im.src = url;
+            im.alt = '';
+            label.appendChild(cb);
+            label.appendChild(im);
+          } else {
+            const ph = document.createElement('div');
+            ph.className = 'mini-ph';
+            ph.innerHTML = shirtSvg();
+            label.appendChild(cb);
+            label.appendChild(ph);
+          }
+
+          const span = document.createElement('span');
+          span.textContent = p.nombre;
+          label.appendChild(span);
+          list.appendChild(label);
+        });
+    }
+
+    showModal(els.modalOutfit);
+  }
+
+  function closeOutfitModal() {
+    hideModal(els.modalOutfit);
+    editingOutfitId = null;
+  }
+
+  $('#btn-add-outfit').onclick = () => openOutfitModal();
+  $('#btn-cancel-outfit').onclick = closeOutfitModal;
+  $('#btn-close-outfit').onclick = closeOutfitModal;
+
+  $('#btn-save-outfit').onclick = async () => {
+    const nombre = els.oNombre.value.trim();
+    if (!nombre) {
+      toast('Ponle un nombre al outfit');
+      els.oNombre.focus();
+      return;
+    }
+
+    const selected = $$('#check-list input[type="checkbox"]:checked').map(cb => cb.value);
+    if (selected.length === 0) {
+      toast('Elige al menos una prenda');
+      return;
+    }
+
+    const existing = editingOutfitId ? outfits.find(x => x.id === editingOutfitId) : null;
+    const id = editingOutfitId || ('o_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+
+    const obj = {
+      id,
+      nombre,
+      garmentIds: selected,
+      creado: existing?.creado || Date.now()
+    };
+
+    await dbPut('outfits', obj);
+    outfits = await dbGetAll('outfits');
+    closeOutfitModal();
+    renderOutfits();
+    toast(existing ? 'Outfit actualizado' : 'Outfit creado');
+  };
+
+  $('#btn-delete-outfit').onclick = async () => {
+    if (!editingOutfitId) return;
+    const ok = await askConfirm('¿Eliminar este outfit? Las prendas seguirán en tu armario.');
+    if (!ok) return;
+
+    await dbDelete('outfits', editingOutfitId);
+    outfits = await dbGetAll('outfits');
+    closeOutfitModal();
+    renderOutfits();
+    toast('Outfit eliminado');
+  };
+
+  /* ===== 14. Filtros ===== */
+  els.search.oninput = renderGarments;
+  els.filterCat.onchange = renderGarments;
+  els.filterSeason.onchange = renderGarments;
+
+  /* ===== 15. Inicio ===== */
+  (async function init() {
+    try {
+      prendas = await dbGetAll('prendas');
+      outfits = await dbGetAll('outfits');
+      renderAll();
+    } catch (err) {
+      console.error(err);
+      toast('No se pudo cargar el armario');
+    }
+  })();
+</script>
+</body>
+</html>
