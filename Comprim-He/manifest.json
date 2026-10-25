@@ -1,0 +1,8 @@
+{
+  "id": "comprim-he",
+  "titulo": "Comprim-He",
+  "icono": "archive",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Comprime ZIPs, imágenes, audio y vídeo para ahorrar espacio"
+}
