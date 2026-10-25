@@ -24,100 +24,139 @@
     color: var(--text);
   }
 
-  .widget {
-    width: 100%; height: 100%;
-    display: flex; align-items: center; gap: 12px;
-    padding: 22px 14px 10px;
-    position: relative;
-  }
+  .widget { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 
-  .badge {
-    position: absolute; top: 8px; left: 14px;
-    font-size: 9px; font-weight: 700; text-transform: uppercase;
-    color: var(--accent); letter-spacing: 0.5px;
-    display: flex; align-items: center; gap: 5px;
-  }
-  .badge-dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--accent); animation: pulse 1.5s infinite;
-  }
-  .badge.paused .badge-dot { animation: none; opacity: 0.45; }
-  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-  /* Thumbnail landscape (16:9) */
-  .thumb {
-    width: 72px; height: 46px; border-radius: 8px;
-    overflow: hidden; flex-shrink: 0;
-    background: var(--field); border: 1px solid var(--line);
+  /* ── Vídeo ────────────────────────────── */
+  .video-wrap {
+    flex: 1; min-height: 0; position: relative;
+    background: #000; border-radius: 16px 16px 0 0;
     display: flex; align-items: center; justify-content: center;
-    color: var(--muted);
   }
-  .thumb img { width: 100%; height: 100%; object-fit: cover; }
-  .thumb svg { width: 20px; height: 20px; }
+  .video-wrap video {
+    width: 100%; height: 100%; object-fit: contain; display: none;
+  }
+  .video-wrap video.on { display: block; }
 
-  .info {
-    flex: 1; min-width: 0;
-    display: flex; flex-direction: column; gap: 2px;
+  .empty-overlay {
+    position: absolute; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.5); gap: 6px;
+    font-size: 11px; text-align: center; padding: 10px;
+  }
+  .empty-overlay.show { display: flex; }
+  .empty-overlay svg { width: 24px; height: 24px; opacity: 0.5; }
+
+  /* ── Overlay de controles ─────────────── */
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    gap: 14px;
+    background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 50%);
+    opacity: 1; transition: opacity 0.2s;
+  }
+  .overlay.playing {
+    opacity: 0; pointer-events: none;
+  }
+  .video-wrap:hover .overlay.playing {
+    opacity: 1; pointer-events: auto;
+  }
+
+  .nav-btn {
+    width: 30px; height: 30px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.22); backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    color: #fff; cursor: pointer; font-size: 16px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: 0.15s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.4); transform: scale(1.1); }
+  .nav-btn:disabled { opacity: 0.25; cursor: not-allowed; transform: none; }
+
+  .play-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff;
+    cursor: pointer; font-size: 16px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: 0.15s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .play-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+
+  .open-btn {
+    position: absolute; top: 6px; right: 6px;
+    width: 26px; height: 26px; border-radius: 6px; border: none;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    color: #fff; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.15s, background 0.15s;
+    z-index: 3;
+  }
+  .open-btn.show { display: flex; }
+  .video-wrap:hover .open-btn { opacity: 1; }
+  .open-btn:hover { background: var(--accent); }
+  .open-btn svg { width: 13px; height: 13px; }
+
+  /* ── Barra inferior ───────────────────── */
+  .bottom {
+    flex-shrink: 0;
+    padding: 7px 10px 8px;
+    background: var(--field);
+    border-top: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 4px;
   }
   .title {
     font-size: 12px; font-weight: 700;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .meta {
-    font-size: 10px; color: var(--muted);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .meta-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10px; color: var(--muted); font-weight: 600;
   }
-  .progress-wrap { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
-  .progress {
-    width: 100%; height: 3px; border-radius: 2px;
+  .mini-progress {
+    flex: 1; height: 3px; border-radius: 2px;
     background: var(--line); overflow: hidden;
   }
-  .progress-bar {
+  .mini-progress .fill {
     height: 100%; background: var(--accent); border-radius: 2px;
-    transition: width 0.4s linear;
+    width: 0; transition: width 0.3s linear;
   }
-  .time-row {
-    display: flex; justify-content: space-between;
-    font-size: 9px; color: var(--muted); font-weight: 600;
-  }
-
-  .empty-state {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    width: 100%; height: 100%; color: var(--muted); gap: 6px;
-    border-radius: 16px; border: 1px dashed var(--line);
-    padding: 10px;
-  }
-  .empty-state svg { width: 24px; height: 24px; opacity: 0.5; }
-  .empty-state span { font-size: 11px; font-weight: 600; }
 </style>
 </head>
 <body>
 
-  <div class="widget" id="main" style="display:none;">
-    <div class="badge" id="badge">
-      <span class="badge-dot"></span>
-      <span id="badge-text">Reproduciendo</span>
+  <div class="widget">
+    <div class="video-wrap" id="videoWrap">
+      <video id="video" playsinline preload="metadata"></video>
+
+      <div class="empty-overlay" id="empty">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+        <span>Sin vídeos en Vid-He</span>
+      </div>
+
+      <div class="overlay" id="overlay" style="display:none;">
+        <button class="nav-btn" id="btnPrev" title="Anterior">‹</button>
+        <button class="play-btn" id="btnPlay" title="Reproducir">▶</button>
+        <button class="nav-btn" id="btnNext" title="Siguiente">›</button>
+      </div>
+
+      <button class="open-btn" id="btnOpen" title="Abrir en Vid-He">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+      </button>
     </div>
-    <div class="thumb" id="thumb"></div>
-    <div class="info">
-      <span class="title" id="title">-</span>
-      <span class="meta" id="meta">-</span>
-      <div class="progress-wrap">
-        <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
-        <div class="time-row">
-          <span id="time-current">0:00</span>
-          <span id="time-total">0:00</span>
-        </div>
+
+    <div class="bottom">
+      <div class="title" id="title">—</div>
+      <div class="meta-row">
+        <span id="time">0:00 / 0:00</span>
+        <div class="mini-progress"><div class="fill" id="fill"></div></div>
       </div>
     </div>
   </div>
 
-  <div class="empty-state" id="empty" style="display:none;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
-    <span>Vid-He vacío</span>
-  </div>
-
 <script>
+  // Tema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -131,16 +170,43 @@
   const DB_VERSION = 1;
 
   const $ = id => document.getElementById(id);
-  const mainEl = $('main'), emptyEl = $('empty');
-  const badgeEl = $('badge'), badgeText = $('badge-text');
-  const thumbEl = $('thumb');
-  const titleEl = $('title'), metaEl = $('meta');
-  const progressBar = $('progress-bar');
-  const timeCurrent = $('time-current'), timeTotal = $('time-total');
+  const videoEl = $('video');
+  const overlay = $('overlay');
+  const btnPlay = $('btnPlay');
+  const btnPrev = $('btnPrev');
+  const btnNext = $('btnNext');
+  const btnOpen = $('btnOpen');
+  const titleEl = $('title');
+  const timeEl = $('time');
+  const fillEl = $('fill');
+  const emptyEl = $('empty');
 
-  const FILM_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>`;
+  const state = {
+    videos: [],
+    currentIndex: -1,
+    objectUrl: null,
+    playing: false,
+    lastWriteTs: 0
+  };
 
-  let libraryCache = { videos: [], ts: 0 };
+  let suppressWrite = false;
+
+  function openDB() {
+    return new Promise(res => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => res(null);
+    });
+  }
+  async function getVideos() {
+    const db = await openDB();
+    if (!db) return [];
+    return new Promise(res => {
+      const tx = db.transaction('videos', 'readonly');
+      const r = tx.objectStore('videos').getAll();
+      r.onsuccess = () => res(r.result || []);
+    });
+  }
 
   function formatTime(s) {
     if (!s || isNaN(s)) return '0:00';
@@ -154,86 +220,174 @@
     return `${m}:${sec}`;
   }
 
-  function openDB() {
-    return new Promise((res) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION);
-      req.onsuccess = () => res(req.result);
-      req.onerror = () => res(null);
-    });
+  function writeNP() {
+    if (suppressWrite) return;
+    const v = state.videos[state.currentIndex];
+    if (!v) { localStorage.removeItem(NP_KEY); return; }
+    const data = {
+      id: v.id,
+      playing: state.playing,
+      currentTime: videoEl.currentTime || 0,
+      duration: videoEl.duration || v.duration || 0,
+      ts: Date.now(),
+      source: 'widget'
+    };
+    state.lastWriteTs = data.ts;
+    try { localStorage.setItem(NP_KEY, JSON.stringify(data)); } catch (e) {}
   }
 
-  async function loadLibrary() {
-    try {
-      const db = await openDB();
-      if (!db) return libraryCache;
-      const tx = db.transaction('videos', 'readonly');
-      const r = tx.objectStore('videos').getAll();
-      await new Promise(res => tx.oncomplete = res);
-      libraryCache = { videos: r.result || [], ts: Date.now() };
-    } catch (e) {}
-    return libraryCache;
-  }
+  function updateUI() {
+    const v = state.videos[state.currentIndex];
 
-  async function render() {
-    const now = Date.now();
-    const raw = localStorage.getItem(NP_KEY);
-    let np = null;
-    try { np = raw ? JSON.parse(raw) : null; } catch (e) {}
-
-    const isFresh = np && (now - (np.ts || 0) < 5000);
-    const isPlaying = np && np.playing && isFresh;
-
-    // Modo 1: Now playing
-    if (np) {
-      mainEl.style.display = 'flex';
-      emptyEl.style.display = 'none';
-
-      badgeEl.className = 'badge' + (isPlaying ? '' : ' paused');
-      badgeText.textContent = isPlaying ? 'Reproduciendo' : 'Pausado';
-
-      thumbEl.innerHTML = np.thumb ? `<img src="${np.thumb}" alt="">` : FILM_ICON;
-      titleEl.textContent = np.title || 'Sin título';
-      metaEl.textContent = np.duration ? formatTime(np.duration) : '-';
-
-      const pct = (np.duration > 0) ? (np.currentTime / np.duration) * 100 : 0;
-      progressBar.style.width = pct + '%';
-      timeCurrent.textContent = formatTime(np.currentTime);
-      timeTotal.textContent = formatTime(np.duration);
+    if (!v) {
+      videoEl.classList.remove('on');
+      emptyEl.classList.add('show');
+      overlay.style.display = 'none';
+      btnOpen.classList.remove('show');
+      titleEl.textContent = '—';
+      timeEl.textContent = '0:00 / 0:00';
+      fillEl.style.width = '0%';
       return;
     }
 
-    // Modo 2: Último vídeo
-    const lib = (libraryCache.ts && (now - libraryCache.ts < 10000))
-      ? libraryCache : await loadLibrary();
+    videoEl.classList.add('on');
+    emptyEl.classList.remove('show');
+    overlay.style.display = 'flex';
+    btnOpen.classList.add('show');
 
-    if (lib.videos.length === 0) {
-      mainEl.style.display = 'none';
-      emptyEl.style.display = 'flex';
-      return;
-    }
-
-    const recent = [...lib.videos].sort((a, b) => (b.date || 0) - (a.date || 0))[0];
-
-    mainEl.style.display = 'flex';
-    emptyEl.style.display = 'none';
-
-    badgeEl.className = 'badge paused';
-    badgeText.textContent = 'Último vídeo';
-
-    thumbEl.innerHTML = recent.thumb ? `<img src="${recent.thumb}" alt="">` : FILM_ICON;
-    titleEl.textContent = recent.title || 'Sin título';
-    metaEl.textContent = recent.duration ? formatTime(recent.duration) : '-';
-
-    progressBar.style.width = '0%';
-    timeCurrent.textContent = '0:00';
-    timeTotal.textContent = formatTime(recent.duration);
+    titleEl.textContent = v.title || 'Sin título';
+    btnPrev.disabled = state.currentIndex === 0;
+    btnNext.disabled = state.currentIndex === state.videos.length - 1;
+    overlay.classList.toggle('playing', state.playing);
+    btnPlay.textContent = state.playing ? '⏸' : '▶';
   }
 
-  render();
-  setInterval(render, 1000);
-  window.addEventListener('storage', (e) => {
-    if (e.key === NP_KEY) render();
+  function loadVideo(index, autoplay = false) {
+    if (index < 0 || index >= state.videos.length) return;
+    if (state.objectUrl) { URL.revokeObjectURL(state.objectUrl); state.objectUrl = null; }
+
+    state.currentIndex = index;
+    const v = state.videos[index];
+    state.objectUrl = URL.createObjectURL(v.blob);
+    videoEl.src = state.objectUrl;
+    state.playing = false;
+
+    updateUI();
+    writeNP();
+
+    if (autoplay) {
+      videoEl.play().catch(() => {
+        state.playing = false;
+        updateUI();
+      });
+    }
+  }
+
+  // ── Controles ──────────────────────────
+  btnPlay.onclick = () => {
+    if (state.currentIndex < 0) return;
+    if (videoEl.paused) videoEl.play().catch(() => {});
+    else videoEl.pause();
+  };
+
+  btnPrev.onclick = () => {
+    if (state.currentIndex <= 0) return;
+    const wasPlaying = !videoEl.paused;
+    loadVideo(state.currentIndex - 1, wasPlaying);
+  };
+
+  btnNext.onclick = () => {
+    if (state.currentIndex >= state.videos.length - 1) return;
+    const wasPlaying = !videoEl.paused;
+    loadVideo(state.currentIndex + 1, wasPlaying);
+  };
+
+  btnOpen.onclick = () => {
+    if (state.currentIndex < 0) return;
+    videoEl.pause();
+    writeNP();
+    if (window.parent !== window && window.parent.MyHub) {
+      window.parent.MyHub.abrir('vid-he');
+    }
+  };
+
+  // ── Eventos del vídeo ──────────────────
+  videoEl.addEventListener('play', () => {
+    state.playing = true;
+    updateUI();
+    writeNP();
   });
+  videoEl.addEventListener('pause', () => {
+    state.playing = false;
+    updateUI();
+    writeNP();
+  });
+  videoEl.addEventListener('timeupdate', () => {
+    const cur = videoEl.currentTime || 0;
+    const dur = videoEl.duration || 0;
+    timeEl.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+    fillEl.style.width = dur > 0 ? ((cur / dur) * 100) + '%' : '0%';
+  });
+  videoEl.addEventListener('ended', () => {
+    if (state.currentIndex < state.videos.length - 1) {
+      loadVideo(state.currentIndex + 1, true);
+    } else {
+      state.playing = false;
+      updateUI();
+    }
+  });
+
+  // ── Sincronización con la app ──────────
+  window.addEventListener('storage', (e) => {
+    if (e.key !== NP_KEY) return;
+    try {
+      const np = JSON.parse(e.newValue || '{}');
+      if (np.source === 'app' && np.playing && !videoEl.paused) {
+        suppressWrite = true;
+        videoEl.pause();
+        setTimeout(() => { suppressWrite = false; }, 60);
+      }
+    } catch (err) {}
+  });
+
+  // ── Init ───────────────────────────────
+  async function init() {
+    state.videos = await getVideos();
+    state.videos.sort((a, b) => (a.date || 0) - (b.date || 0));
+
+    if (state.videos.length === 0) {
+      updateUI();
+      return;
+    }
+
+    let startIdx = state.videos.length - 1;
+    let savedTime = 0;
+
+    const raw = localStorage.getItem(NP_KEY);
+    if (raw) {
+      try {
+        const np = JSON.parse(raw);
+        const i = state.videos.findIndex(v => v.id === np.id);
+        if (i >= 0) {
+          startIdx = i;
+          savedTime = np.currentTime || 0;
+        }
+      } catch (err) {}
+    }
+
+    loadVideo(startIdx, false);
+
+    if (savedTime > 0) {
+      const applyTime = () => {
+        try { videoEl.currentTime = savedTime; } catch (e) {}
+        videoEl.removeEventListener('loadedmetadata', applyTime);
+      };
+      if (videoEl.readyState >= 1) applyTime();
+      else videoEl.addEventListener('loadedmetadata', applyTime);
+    }
+  }
+
+  init();
 </script>
 </body>
 </html>
