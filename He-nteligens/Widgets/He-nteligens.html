@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --field: #f6f8fb;
+    --line: rgba(15, 23, 42, 0.08);
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --field: #2a2a31;
+    --line: rgba(255, 255, 255, 0.09);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; width: 100vw;
+    background: transparent; overflow: hidden; border-radius: 16px;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    color: var(--text); cursor: pointer;
+  }
+  
+  .widget {
+    height: 100%; display: flex; flex-direction: column; padding: 14px; gap: 10px;
+  }
+  
+  .header { display: flex; align-items: center; gap: 6px; }
+  .header svg { width: 16px; height: 16px; color: var(--accent); }
+  .header-title { font-weight: 700; font-size: 13px; }
+  .chat-title { 
+    font-size: 10px; color: var(--muted); font-weight: 600; 
+    text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; 
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  
+  .preview {
+    flex: 1; background: var(--field); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px; font-size: 12px; line-height: 1.4;
+    color: var(--text); overflow: hidden; position: relative;
+    transition: border-color 0.2s;
+  }
+  .preview.ai { border-left: 3px solid var(--accent); }
+  .preview.user { border-left: 3px solid var(--muted); }
+  
+  .preview-text {
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word;
+  }
+  .preview-role { 
+    font-size: 9px; font-weight: 700; color: var(--muted); 
+    text-transform: uppercase; margin-bottom: 4px; 
+  }
+
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--muted); gap: 8px; font-size: 11px; text-align: center;
+    border-radius: 16px; border: 1px dashed var(--line);
+  }
+  .empty-state svg { width: 28px; height: 28px; opacity: 0.5; }
+</style>
+</head>
+<body>
+
+  <div class="widget" id="main" style="display:none;">
+    <div>
+      <div class="header">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+        <span class="header-title">He-nteligens</span>
+      </div>
+      <div class="chat-title" id="chat-title">-</div>
+    </div>
+    
+    <div class="preview ai" id="preview">
+      <div class="preview-role" id="preview-role">Último mensaje</div>
+      <div class="preview-text" id="preview-text">...</div>
+    </div>
+  </div>
+
+  <div class="empty-state" id="empty" style="display:none;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"></path><rect width="16" height="12" x="4" y="8" rx="2"></rect><path d="M2 14h2"></path><path d="M20 14h2"></path><path d="M15 13v2"></path><path d="M9 13v2"></path></svg>
+    <span>Sin chats recientes</span>
+  </div>
+  
+<script>
+  // Tema
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  // Abrir la app al hacer clic
+  document.body.onclick = () => {
+    if (window.parent !== window && window.parent.MyHub) {
+      window.parent.MyHub.abrir('he-nteligens');
+    }
+  };
+
+  function render() {
+    const chats = JSON.parse(localStorage.getItem('myhub_he_nteligence_chats') || '[]');
+    const activeId = localStorage.getItem('myhub_he_nteligence_active');
+    
+    // Buscar el chat activo, o si no hay, el más reciente
+    let chat = chats.find(c => c.id === activeId);
+    if (!chat && chats.length > 0) chat = chats[0];
+
+    const mainEl = document.getElementById('main');
+    const emptyEl = document.getElementById('empty');
+
+    if (!chat || chat.messages.length === 0) {
+      mainEl.style.display = 'none';
+      emptyEl.style.display = 'flex';
+      return;
+    }
+
+    mainEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+
+    document.getElementById('chat-title').textContent = chat.title || 'Chat sin título';
+
+    // Obtener el último mensaje (sea del usuario o de la IA)
+    const lastMsg = chat.messages[chat.messages.length - 1];
+    const isAI = lastMsg.role === 'assistant';
+    
+    // Aplicar estilo según quién habló
+    const previewEl = document.getElementById('preview');
+    previewEl.className = 'preview ' + (isAI ? 'ai' : 'user');
+    
+    document.getElementById('preview-role').textContent = isAI ? 'He-nteligens' : 'Tú';
+    document.getElementById('preview-text').textContent = lastMsg.content;
+  }
+
+  render();
+  // Refrescar cada 2 segundos por si la app se actualiza en segundo plano
+  setInterval(render, 2000);
+  
+  // Refrescar si cambia el localStorage
+  window.addEventListener('storage', (e) => {
+    if (e.key && e.key.includes('myhub_he_nteligence')) render();
+  });
+</script>
+</body>
+</html>
