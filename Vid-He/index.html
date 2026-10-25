@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100vh; width: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  /* ── Header ─────────────────────────────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+  }
+  .header-info { display: flex; flex-direction: column; gap: 2px; }
+  .header-title {
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .header-title svg { width: 16px; height: 16px; color: var(--accent); }
+  .storage-info { font-size: 10px; color: var(--muted); font-weight: 600; }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none;
+    padding: 6px 12px; border-radius: 8px;
+    font-family: inherit; font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary svg { width: 14px; height: 14px; }
+
+  /* ── Player ─────────────────────────────── */
+  .player-area {
+    flex: 1; min-height: 0;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    margin: 8px; border-radius: 12px;
+  }
+  .player-area video {
+    max-width: 100%; max-height: 100%;
+    border-radius: 12px;
+    background: #000;
+  }
+  .player-empty {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.5); gap: 10px;
+    font-size: 12px; text-align: center; padding: 20px;
+  }
+  .player-empty svg { width: 48px; height: 48px; opacity: 0.4; }
+  .player-empty p { margin: 0; line-height: 1.5; }
+
+  /* ── Lista inferior ─────────────────────── */
+  .list-area {
+    height: 118px; flex-shrink: 0;
+    border-top: 1px solid var(--line);
+    background: var(--field);
+    display: flex; flex-direction: column;
+  }
+  .list-header {
+    padding: 6px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 10px; color: var(--muted); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--line);
+  }
+  .list-count { color: var(--accent); }
+  .list-scroll {
+    flex: 1; overflow-x: auto; overflow-y: hidden;
+    display: flex; gap: 8px; padding: 8px 12px;
+  }
+  .list-scroll::-webkit-scrollbar { height: 6px; }
+  .list-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  .video-card {
+    flex-shrink: 0; width: 132px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; cursor: pointer;
+    transition: all 0.15s; position: relative;
+    display: flex; flex-direction: column;
+  }
+  .video-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .video-card.playing { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+  .video-thumb {
+    width: 100%; height: 62px; background: #000; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .video-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .video-thumb > svg { width: 24px; height: 24px; color: rgba(255,255,255,0.4); }
+  .video-thumb .play-badge {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.35);
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .video-card:hover .video-thumb .play-badge,
+  .video-card.playing .video-thumb .play-badge { opacity: 1; }
+  .video-thumb .play-badge svg { width: 20px; height: 20px; color: #fff; }
+  .video-thumb .duration-badge {
+    position: absolute; bottom: 4px; right: 4px;
+    background: rgba(0,0,0,0.75); color: #fff;
+    font-size: 9px; font-weight: 700;
+    padding: 1px 4px; border-radius: 3px;
+  }
+  .video-meta {
+    padding: 4px 6px;
+    display: flex; flex-direction: column; gap: 1px;
+    min-width: 0;
+  }
+  .video-name {
+    font-size: 11px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .video-size { font-size: 9px; color: var(--muted); }
+
+  .card-actions {
+    position: absolute; top: 4px; right: 4px;
+    display: flex; gap: 2px;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .video-card:hover .card-actions { opacity: 1; }
+  .card-actions button {
+    width: 20px; height: 20px; border-radius: 4px;
+    background: rgba(0,0,0,0.7); color: #fff; border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; backdrop-filter: blur(4px);
+  }
+  .card-actions button:hover { background: var(--accent); }
+  .card-actions button.danger:hover { background: var(--danger); }
+  .card-actions svg { width: 11px; height: 11px; }
+
+  .list-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 11px; text-align: center; padding: 0 20px;
+  }
+
+  /* ── Modal ─────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 16px; padding: 20px;
+    width: 90%; max-width: 320px;
+    border: 1px solid var(--line);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  }
+  .modal h3 { margin: 0 0 16px 0; font-size: 15px; }
+  .input-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .input-group label { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .input {
+    padding: 8px 10px; border-radius: 8px;
+    border: 1.5px solid var(--line);
+    background: var(--field); color: var(--text);
+    font-family: inherit; font-size: 13px; outline: none;
+  }
+  .input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  .btn-cancel {
+    background: var(--field); color: var(--text);
+    border: 1px solid var(--line);
+    padding: 6px 12px; border-radius: 8px;
+    cursor: pointer; font-weight: 600; font-size: 12px;
+    transition: 0.15s;
+  }
+  .btn-cancel:hover { background: var(--line); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-info">
+      <div class="header-title">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+        Vid-He
+      </div>
+      <div class="storage-info" id="storage-text">0 MB / 25 MB</div>
+    </div>
+    <button class="btn-primary" id="btn-upload">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+      Subir
+    </button>
+    <input type="file" id="file-input" accept="video/*" multiple hidden>
+  </div>
+
+  <div class="player-area" id="player-area">
+    <div class="player-empty" id="player-empty">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+      <p>Selecciona un vídeo de la lista<br>o sube uno nuevo para empezar</p>
+    </div>
+    <video id="video-player" controls playsinline style="display:none;"></video>
+  </div>
+
+  <div class="list-area">
+    <div class="list-header">
+      <span>Biblioteca</span>
+      <span class="list-count" id="list-count">0 vídeos</span>
+    </div>
+    <div class="list-scroll" id="list-scroll">
+      <div class="list-empty" id="list-empty">No hay vídeos aún. Pulsa "Subir" para añadir el primero.</div>
+    </div>
+  </div>
+
+  <!-- Modal Renombrar -->
+  <div class="modal-overlay" id="modal-edit">
+    <div class="modal">
+      <h3>Renombrar vídeo</h3>
+      <input type="hidden" id="edit-id">
+      <div class="input-group">
+        <label>Nombre</label>
+        <input type="text" class="input" id="edit-name" placeholder="Nombre del vídeo">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btn-cancel-edit">Cancelar</button>
+        <button class="btn-primary" id="btn-save-edit">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ── 1. Sincronización de tema ─────────────────
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  // ── 2. Config ─────────────────────────────────
+  const DB_NAME = 'vid_he_db';
+  const DB_VERSION = 1;
+  const MAX_STORAGE = 25 * 1024 * 1024;
+  const NP_KEY = 'vid_he_nowplaying';
+
+  let db, videos = [], currentVideo = null, objectUrl = null;
+  const video = document.getElementById('video-player');
+
+  const req = indexedDB.open(DB_NAME, DB_VERSION);
+  req.onupgradeneeded = (e) => {
+    const d = e.target.result;
+    if (!d.objectStoreNames.contains('videos')) d.createObjectStore('videos', { keyPath: 'id' });
+  };
+  req.onsuccess = (e) => { db = e.target.result; loadVideos(); };
+
+  const dbGetAll = () => new Promise(res => {
+    const tx = db.transaction('videos', 'readonly');
+    const r = tx.objectStore('videos').getAll();
+    r.onsuccess = () => res(r.result);
+  });
+  const dbPut = (v) => new Promise(res => {
+    const tx = db.transaction('videos', 'readwrite');
+    tx.objectStore('videos').put(v);
+    tx.oncomplete = () => res();
+  });
+  const dbDelete = (id) => new Promise(res => {
+    const tx = db.transaction('videos', 'readwrite');
+    tx.objectStore('videos').delete(id);
+    tx.oncomplete = () => res();
+  });
+
+  // ── 3. Utils ──────────────────────────────────
+  function formatDuration(s) {
+    if (!s || isNaN(s)) return '0:00';
+    s = Math.floor(s);
+    const m = Math.floor(s / 60);
+    const sec = String(s % 60).padStart(2, '0');
+    if (m >= 60) {
+      const h = Math.floor(m / 60);
+      return `${h}:${String(m % 60).padStart(2, '0')}:${sec}`;
+    }
+    return `${m}:${sec}`;
+  }
+  function formatSize(bytes) {
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  // ── 4. Carga y render ─────────────────────────
+  async function loadVideos() {
+    videos = await dbGetAll();
+    renderList();
+    updateStorage();
+  }
+
+  function updateStorage() {
+    const total = videos.reduce((a, v) => a + (v.size || 0), 0);
+    const usedMB = (total / (1024 * 1024)).toFixed(2);
+    document.getElementById('storage-text').textContent = `${usedMB} MB / 25 MB`;
+    document.getElementById('list-count').textContent =
+      videos.length === 0 ? '0 vídeos' :
+      `${videos.length} ${videos.length === 1 ? 'vídeo' : 'vídeos'}`;
+  }
+
+  function renderList() {
+    const scroll = document.getElementById('list-scroll');
+    scroll.innerHTML = '';
+
+    if (videos.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'list-empty';
+      empty.textContent = 'No hay vídeos aún. Pulsa "Subir" para añadir el primero.';
+      scroll.appendChild(empty);
+      return;
+    }
+
+    const sorted = [...videos].sort((a, b) => (b.date || 0) - (a.date || 0));
+    sorted.forEach(v => {
+      const isPlaying = currentVideo && currentVideo.id === v.id;
+      const card = document.createElement('div');
+      card.className = `video-card ${isPlaying ? 'playing' : ''}`;
+
+      const thumbHtml = v.thumb
+        ? `<img src="${v.thumb}" alt="">`
+        : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>`;
+
+      card.innerHTML = `
+        <div class="video-thumb">
+          ${thumbHtml}
+          <div class="play-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          </div>
+          ${v.duration ? `<span class="duration-badge">${formatDuration(v.duration)}</span>` : ''}
+          <div class="card-actions">
+            <button class="edit-btn" title="Renombrar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+            </button>
+            <button class="danger delete-btn" title="Eliminar">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="video-meta">
+          <span class="video-name" title="${v.title}">${v.title}</span>
+          <span class="video-size">${formatSize(v.size || 0)}</span>
+        </div>
+      `;
+
+      card.onclick = (e) => {
+        if (e.target.closest('.card-actions')) return;
+        playVideo(v);
+      };
+      card.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); openEdit(v); };
+      card.querySelector('.delete-btn').onclick = async (e) => {
+        e.stopPropagation();
+        if (!confirm(`¿Eliminar "${v.title}"?`)) return;
+        await dbDelete(v.id);
+        if (currentVideo && currentVideo.id === v.id) stopVideo();
+        await loadVideos();
+      };
+
+      scroll.appendChild(card);
+    });
+  }
+
+  // ── 5. Reproducción ───────────────────────────
+  function playVideo(v) {
+    if (currentVideo && currentVideo.id === v.id) {
+      if (video.paused) video.play(); else video.pause();
+      return;
+    }
+    if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+    currentVideo = v;
+    objectUrl = URL.createObjectURL(v.blob);
+    video.src = objectUrl;
+    video.style.display = 'block';
+    document.getElementById('player-empty').style.display = 'none';
+    video.play().catch(() => {});
+    renderList();
+    syncNP();
+  }
+
+  function stopVideo() {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    video.style.display = 'none';
+    document.getElementById('player-empty').style.display = 'flex';
+    currentVideo = null;
+    if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
+    localStorage.removeItem(NP_KEY);
+    renderList();
+  }
+
+  video.addEventListener('play', syncNP);
+  video.addEventListener('pause', syncNP);
+  video.addEventListener('ended', syncNP);
+  video.addEventListener('seeked', syncNP);
+  video.addEventListener('loadedmetadata', syncNP);
+  let _lastNPSync = 0;
+  video.addEventListener('timeupdate', () => {
+    if (Date.now() - _lastNPSync > 2000) { _lastNPSync = Date.now(); syncNP(); }
+  });
+
+  // ── 6. Sync con el widget ─────────────────────
+  function syncNP() {
+    if (!currentVideo) { localStorage.removeItem(NP_KEY); return; }
+    try {
+      localStorage.setItem(NP_KEY, JSON.stringify({
+        id: currentVideo.id,
+        title: currentVideo.title,
+        playing: !video.paused && !video.ended,
+        currentTime: video.currentTime || 0,
+        duration: video.duration || currentVideo.duration || 0,
+        thumb: currentVideo.thumb || null,
+        ts: Date.now()
+      }));
+    } catch (e) {}
+  }
+
+  // ── 7. Subida + generación de thumbnail ───────
+  document.getElementById('btn-upload').onclick = () => document.getElementById('file-input').click();
+  document.getElementById('file-input').onchange = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    const currentSize = videos.reduce((a, v) => a + (v.size || 0), 0);
+    const newSize = files.reduce((a, f) => a + f.size, 0);
+    if (currentSize + newSize > MAX_STORAGE) {
+      alert(
+        `Límite de 25 MB alcanzado.\n\n` +
+        `Usado: ${(currentSize/(1024*1024)).toFixed(2)} MB\n` +
+        `Necesitas: ${(newSize/(1024*1024)).toFixed(2)} MB\n` +
+        `Disponible: ${((MAX_STORAGE-currentSize)/(1024*1024)).toFixed(2)} MB`
+      );
+      e.target.value = '';
+      return;
+    }
+
+    for (const file of files) {
+      if (!file.type.startsWith('video/')) {
+        alert(`"${file.name}" no es un archivo de vídeo válido.`);
+        continue;
+      }
+      try {
+        const { thumb, duration } = await extractThumbAndDuration(file);
+        await dbPut({
+          id: 'vid_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          blob: file,
+          size: file.size,
+          thumb,
+          duration,
+          date: Date.now()
+        });
+      } catch (err) {
+        console.error('Error al procesar', file.name, err);
+        alert(`No se pudo procesar "${file.name}".`);
+      }
+    }
+    e.target.value = '';
+    await loadVideos();
+  };
+
+  // Genera un JPEG dataURL y la duración a partir de un Blob de vídeo
+  function extractThumbAndDuration(blob) {
+    return new Promise((resolve) => {
+      const tmpUrl = URL.createObjectURL(blob);
+      const tmp = document.createElement('video');
+      tmp.preload = 'metadata';
+      tmp.muted = true;
+      tmp.playsInline = true;
+      tmp.src = tmpUrl;
+
+      let resolved = false;
+      const finish = (data) => {
+        if (resolved) return;
+        resolved = true;
+        URL.revokeObjectURL(tmpUrl);
+        resolve(data);
+      };
+
+      tmp.onloadedmetadata = () => {
+        const duration = tmp.duration || 0;
+        const seekTo = Math.min(1, duration / 2 || 0);
+        tmp.currentTime = seekTo;
+        tmp.onseeked = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const targetW = 200;
+            const ratio = tmp.videoHeight / tmp.videoWidth || 0.5625;
+            canvas.width = targetW;
+            canvas.height = Math.round(targetW * ratio);
+            canvas.getContext('2d').drawImage(tmp, 0, 0, canvas.width, canvas.height);
+            const thumb = canvas.toDataURL('image/jpeg', 0.7);
+            finish({ thumb, duration });
+          } catch (err) {
+            finish({ thumb: null, duration });
+          }
+        };
+      };
+      tmp.onerror = () => finish({ thumb: null, duration: 0 });
+      setTimeout(() => finish({ thumb: null, duration: 0 }), 8000);
+    });
+  }
+
+  // ── 8. Modal renombrar ────────────────────────
+  const modalEdit = document.getElementById('modal-edit');
+
+  function openEdit(v) {
+    document.getElementById('edit-id').value = v.id;
+    document.getElementById('edit-name').value = v.title;
+    modalEdit.classList.add('active');
+    setTimeout(() => {
+      const inp = document.getElementById('edit-name');
+      inp.focus(); inp.select();
+    }, 100);
+  }
+  document.getElementById('btn-cancel-edit').onclick = () => modalEdit.classList.remove('active');
+  document.getElementById('btn-save-edit').onclick = async () => {
+    const id = document.getElementById('edit-id').value;
+    const name = document.getElementById('edit-name').value.trim();
+    if (!name) return;
+    const v = videos.find(x => x.id === id);
+    if (!v) return;
+    v.title = name;
+    await dbPut(v);
+    if (currentVideo && currentVideo.id === id) {
+      currentVideo.title = name;
+      syncNP();
+    }
+    modalEdit.classList.remove('active');
+    await loadVideos();
+  };
+</script>
+</body>
+</html>
