@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <style>
-  /* Variables base en caso de que falle el postMessage */
   :root {
     --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
     --text: #0b1220;
     --muted: #64748b;
   }
@@ -22,35 +22,35 @@
   }
 
   .widget-container {
-    display: flex; align-items: center; gap: 16px;
-    width: 100%; height: 100%; padding: 16px;
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; height: 100%; padding: 12px 14px;
   }
 
   .icon-box {
-    width: 60px; height: 60px; border-radius: 16px;
-    background: var(--accent-soft, rgba(37, 99, 235, 0.15));
+    width: 48px; height: 48px; border-radius: 14px;
+    background: var(--accent-soft);
     display: flex; align-items: center; justify-content: center;
-    color: var(--accent);
-    flex-shrink: 0;
+    color: var(--accent); flex-shrink: 0;
   }
-  .icon-box svg { width: 36px; height: 36px; }
+  .icon-box svg { width: 26px; height: 26px; }
 
   .info-box {
-    display: flex; flex-direction: column; gap: 2px; min-width: 0;
-  }
-
-  .temp {
-    font-size: 32px; font-weight: 800; line-height: 1;
-    letter-spacing: -1px; color: var(--text);
+    display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1;
   }
 
   .city {
-    font-size: 12px; font-weight: 700; color: var(--accent);
+    font-size: 10px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.5px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
+  .temp {
+    font-size: 30px; font-weight: 800; line-height: 1;
+    letter-spacing: -1px; color: var(--text);
+  }
+
   .desc {
-    font-size: 12px; color: var(--muted); font-weight: 500;
+    font-size: 11px; font-weight: 600; color: var(--muted);
     text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
@@ -59,7 +59,8 @@
     width: 100%; text-align: center;
   }
 </style>
-<script src="../../vendor/lucide.min.js"></script>
+<!-- Cambiado a CDN para evitar error 404 en el iframe -->
+<script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
@@ -68,8 +69,8 @@
       <i data-lucide="cloud-sun"></i>
     </div>
     <div class="info-box">
+      <div class="city" id="city">Ubicación</div>
       <div class="temp" id="temp">--°</div>
-      <div class="city" id="city">Cargando...</div>
       <div class="desc" id="desc">...</div>
     </div>
   </div>
@@ -83,7 +84,7 @@
     if (e.data?.type === 'myhub:tema:res') {
       document.documentElement.dataset.modo = e.data.modo;
       document.documentElement.style.setProperty('--accent', e.data.color);
-      // Calculamos el accent-soft manualmente ya que el widget está aislado
+      // Calculamos el accent-soft manualmente
       const hex = e.data.color.replace('#', '');
       const r = parseInt(hex.substring(0, 2), 16);
       const g = parseInt(hex.substring(2, 4), 16);
@@ -135,7 +136,8 @@
   // Iniciar obtención de ubicación
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Mi Ubicación'),
+      // Cambiado a 'Ubicación' para ahorrar espacio
+      (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude, 'Ubicación'),
       () => fetchWeather(-33.45, -70.66, 'Santiago')
     );
   } else {
