@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
   :root {
     --accent: #2563eb;
@@ -12,6 +13,7 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
+    --danger: #ef4444;
     --ease-spring: cubic-bezier(0.2, 0.9, 0.3, 1.15);
   }
   
@@ -94,21 +96,10 @@
     scrollbar-width: thin;
     scrollbar-color: var(--line) transparent;
   }
-  
-  .hourly-forecast::-webkit-scrollbar {
-    height: 6px;
-    display: block;
-  }
-  .hourly-forecast::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .hourly-forecast::-webkit-scrollbar-thumb {
-    background: var(--line);
-    border-radius: 4px;
-  }
-  .hourly-forecast::-webkit-scrollbar-thumb:hover {
-    background: var(--muted);
-  }
+  .hourly-forecast::-webkit-scrollbar { height: 6px; display: block; }
+  .hourly-forecast::-webkit-scrollbar-track { background: transparent; }
+  .hourly-forecast::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .hourly-forecast::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
   .hourly-item {
     display: flex; flex-direction: column; align-items: center; gap: 8px;
@@ -123,9 +114,7 @@
   .hourly-temp { font-size: 15px; font-weight: 700; }
 
   /* Por Días */
-  .daily-forecast {
-    display: flex; flex-direction: column; gap: 8px;
-  }
+  .daily-forecast { display: flex; flex-direction: column; gap: 8px; }
   .daily-item {
     display: flex; align-items: center; justify-content: space-between;
     background: var(--field); border: 1px solid var(--line);
@@ -142,21 +131,11 @@
 
   /* Créditos de la API */
   .app-credit {
-    text-align: center;
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 10px;
-    padding-bottom: 10px;
-    opacity: 0.8;
+    text-align: center; font-size: 11px; color: var(--muted);
+    margin-top: 10px; padding-bottom: 10px; opacity: 0.8;
   }
-  .app-credit a {
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 600;
-  }
-  .app-credit a:hover {
-    text-decoration: underline;
-  }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .app-credit a:hover { text-decoration: underline; }
 
   /* Cargando */
   .loader {
@@ -169,10 +148,25 @@
     animation: spin 1s linear infinite;
   }
 
+  /* TOAST NOTIFICATION (Reemplazo de alert) */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 1000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
+
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   
-  /* Scrollbar global para el contenido principal */
+  /* Scrollbar global */
   .content::-webkit-scrollbar { width: 6px; }
   .content::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 </style>
@@ -193,8 +187,11 @@
     </div>
   </div>
 
+  <!-- Elemento para el Toast -->
+  <div class="toast" id="toast"></div>
+
 <script>
-  // Sincronización de Tema con MyHub
+  // 1. Sincronización de Tema con MyHub
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -204,10 +201,24 @@
     }
   });
 
+  // 2. Sistema de Notificaciones (Toast)
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.innerHTML = type === 'error' 
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> ${msg}`
+      : msg;
+    el.className = `toast ${type} show`;
+    
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.classList.remove('show');
+    }, 3000);
+  }
+
   const contentEl = document.getElementById('content');
   const searchInput = document.getElementById('search-input');
   
-  // Mapeo de códigos meteorológicos WMO a iconos de Lucide
   const getWeatherInfo = (code) => {
     if (code === 0) return { icon: 'sun', label: 'Despejado' };
     if (code === 1 || code === 2) return { icon: 'cloud-sun', label: 'Parcialmente nublado' };
@@ -314,7 +325,6 @@
         `;
       }
 
-      // Añadimos el crédito de Open-Meteo al final del contenido
       html += `
         </div></div>
         <div class="app-credit">
@@ -328,7 +338,7 @@
 
     } catch (err) {
       console.error(err);
-      contentEl.innerHTML = `<div class="loader" style="color: #ef4444;">Error al cargar el clima.<br><small>Verifica tu conexión.</small></div>`;
+      contentEl.innerHTML = `<div class="loader" style="color: var(--danger);">Error al cargar el clima.<br><small>Verifica tu conexión.</small></div>`;
     }
   };
 
@@ -357,10 +367,12 @@
         fetchWeather(city.latitude, city.longitude, locationName);
         searchInput.value = '';
       } else {
-        alert('No se encontró la ciudad.');
+        // ALERT REEMPLAZADO
+        showToast('No se encontró la ciudad.', 'error');
       }
     } catch (e) {
-      alert('Error buscando la ciudad.');
+      // ALERT REEMPLAZADO
+      showToast('Error buscando la ciudad.', 'error');
     }
   };
 
