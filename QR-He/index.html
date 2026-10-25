@@ -12,6 +12,7 @@
     --line: rgba(15, 23, 42, 0.08);
     --card: #ffffff;
     --field: #f6f8fb;
+    --danger: #ef4444;
   }
   html[data-modo="oscuro"] {
     --text: #f4f4f6;
@@ -80,6 +81,21 @@
   }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
   .app-credit a:hover { text-decoration: underline; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 1000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 </style>
 </head>
 <body>
@@ -105,7 +121,11 @@
     </div>
   </div>
 
-  <script src="../../vendor/lucide.min.js"></script>
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Cambiado a CDN para evitar error 404 -->
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
     window.addEventListener('message', (e) => {
@@ -114,6 +134,16 @@
         document.documentElement.style.setProperty('--accent', e.data.color);
       }
     });
+
+    // --- SISTEMA DE TOAST ---
+    let toastTimer = null;
+    function showToast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast ${type} show`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+    }
 
     const inputText = document.getElementById('input-text');
     const btnGenerate = document.getElementById('btn-generate');
@@ -124,8 +154,10 @@
 
     btnGenerate.onclick = () => {
       const text = inputText.value.trim();
+      
+      // REEMPLAZO DE ALERT
       if (!text) {
-        alert('Por favor, escribe algo para generar el código QR.');
+        showToast('Por favor, escribe algo para generar el código.', 'error');
         return;
       }
 
@@ -157,6 +189,7 @@
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      showToast('Imagen descargada');
     };
 
     if (window.lucide) lucide.createIcons();
