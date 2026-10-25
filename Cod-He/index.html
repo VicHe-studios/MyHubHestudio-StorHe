@@ -17,6 +17,7 @@
     --sidebar-bg: #f1f5f9;
     --editor-bg: #1e1e1e;
     --sidebar-width: 220px;
+    --danger: #ef4444;
   }
   
   html[data-modo="oscuro"] {
@@ -134,6 +135,7 @@
   }
   .empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
 
+  /* MODALES Y TOAST */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
     display: none; align-items: center; justify-content: center; z-index: 9999;
@@ -145,6 +147,7 @@
     display: flex; flex-direction: column; gap: 12px; color: var(--text);
   }
   .modal h3 { margin: 0; font-size: 16px; }
+  .modal p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.4; }
   .modal input, .modal select {
     padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line);
     background: var(--field); color: var(--text); font-family: inherit; font-size: 13px; outline: none;
@@ -154,7 +157,22 @@
   .btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; }
   .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
   .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
   .btn:hover { filter: brightness(1.1); }
+
+  .toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card);
+    padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22, 1, .36, 1);
+    pointer-events: none; z-index: 10000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { border-left: 4px solid var(--danger); }
 
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); border-radius: 4px; }
@@ -226,6 +244,7 @@
     </div>
   </div>
 
+  <!-- MODAL PROMPT (Nuevo archivo / Renombrar) -->
   <div class="modal-overlay" id="modal-prompt">
     <div class="modal">
       <h3 id="modal-title">Nuevo Archivo</h3>
@@ -237,6 +256,19 @@
     </div>
   </div>
 
+  <!-- MODAL CONFIRM (Reemplaza confirm() nativo) -->
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <h3 id="confirm-title">Confirmar</h3>
+      <p id="confirm-message">¿Estás seguro?</p>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn primary" id="btn-accept-confirm">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL MOVE -->
   <div class="modal-overlay" id="modal-move">
     <div class="modal">
       <h3>Mover Archivo</h3>
@@ -248,6 +280,9 @@
     </div>
   </div>
 
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
 <script>
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
@@ -257,6 +292,37 @@
       document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
     }
   });
+
+  // --- SISTEMA DE NOTIFICACIONES (Toast) ---
+  let toastTimer = null;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.innerHTML = msg;
+    el.className = `toast ${type} show`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // --- SISTEMA DE CONFIRMACIÓN ---
+  let confirmCallback = null;
+  function showConfirm(title, message, callback, isDanger = false) {
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    const btn = document.getElementById('btn-accept-confirm');
+    btn.className = isDanger ? 'btn danger' : 'btn primary';
+    confirmCallback = callback;
+    document.getElementById('modal-confirm').classList.add('active');
+  }
+  document.getElementById('btn-cancel-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    confirmCallback = null;
+  };
+  document.getElementById('btn-accept-confirm').onclick = () => {
+    document.getElementById('modal-confirm').classList.remove('active');
+    if (confirmCallback) confirmCallback();
+    confirmCallback = null;
+  };
+
 
   const editor = ace.edit("editor-container");
   editor.setTheme("ace/theme/tomorrow_night");
@@ -282,7 +348,6 @@
   let activeFolderId = 'root';
 
   try {
-    // Cambiado a v4 para forzar la recarga del ejemplo limpio
     const stored = localStorage.getItem('codhe_files_v4');
     if (stored) files = JSON.parse(stored);
   } catch(e) { files = []; }
@@ -421,7 +486,6 @@
   const statusLang = document.getElementById('status-lang');
   const sidebarEl = document.getElementById('sidebar');
 
-  // Cambiado a v4
   const saveToStorage = () => localStorage.setItem('codhe_files_v4', JSON.stringify(files));
 
   const getLanguage = (filename) => {
@@ -624,33 +688,37 @@
 
   window.deleteItem = (e, id) => {
     e.stopPropagation();
-    if (!confirm('¿Eliminar este elemento?')) return;
     
-    const deleteRecursive = (targetId) => {
-      const children = files.filter(f => f.parent === targetId);
-      children.forEach(c => deleteRecursive(c.id));
-      files = files.filter(f => f.id !== targetId);
-    };
-    
-    deleteRecursive(id);
-    saveToStorage();
-    
-    if (activeFileId === id) {
-      activeFileId = null;
-      editor.setValue('');
-      editor.setReadOnly(true);
-      emptyState.style.display = 'flex';
-      statusFile.textContent = 'Sin archivo';
-      statusLang.textContent = 'Texto plano';
-    }
-    if (activeFolderId === id) {
-      activeFolderId = 'root';
-    }
-    renderTree();
+    // REEMPLAZO DE CONFIRM()
+    showConfirm('Eliminar elemento', '¿Estás seguro de que deseas eliminar este elemento permanentemente?', () => {
+      const deleteRecursive = (targetId) => {
+        const children = files.filter(f => f.parent === targetId);
+        children.forEach(c => deleteRecursive(c.id));
+        files = files.filter(f => f.id !== targetId);
+      };
+      
+      deleteRecursive(id);
+      saveToStorage();
+      
+      if (activeFileId === id) {
+        activeFileId = null;
+        editor.setValue('');
+        editor.setReadOnly(true);
+        emptyState.style.display = 'flex';
+        statusFile.textContent = 'Sin archivo';
+        statusLang.textContent = 'Texto plano';
+      }
+      if (activeFolderId === id) {
+        activeFolderId = 'root';
+      }
+      renderTree();
+      showToast('Elemento eliminado');
+    }, true); // true = Peligro (botón rojo)
   };
 
   document.getElementById('btn-export').onclick = () => {
-    if (files.length <= 1) return alert('No hay archivos para exportar.');
+    // REEMPLAZO DE ALERT()
+    if (files.length <= 1) return showToast('No hay archivos para exportar.', 'error');
 
     showPrompt(
       'Exportar Proyecto',
@@ -683,8 +751,10 @@
 
           a.click();
           URL.revokeObjectURL(url);
+          showToast('ZIP exportado con éxito');
         } catch (e) {
-          alert('Error al generar el ZIP');
+          // REEMPLAZO DE ALERT()
+          showToast('Error al generar el ZIP', 'error');
         }
       },
       'Opcional — vacío = nombre automático'
