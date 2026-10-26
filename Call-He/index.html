@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100vh; width: 100%; margin: 0; overflow: hidden;
+  }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+  }
+  
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  .header {
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header h1 { margin: 0; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+  .main-content {
+    flex: 1; display: flex; flex-direction: column; position: relative;
+    overflow: hidden;
+  }
+
+  /* Join Screen */
+  .join-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; padding: 20px; gap: 16px;
+  }
+  .join-screen h1 { margin: 0; font-size: 22px; font-weight: 800; color: var(--accent); }
+  .join-screen p { margin: 0; color: var(--muted); font-size: 13px; text-align: center; line-height: 1.4; }
+  .join-input {
+    width: 100%; max-width: 240px; text-align: center;
+    font-size: 16px; letter-spacing: 1px; font-weight: 600;
+    padding: 12px; border-radius: 10px;
+    border: 1.5px solid var(--line); background: var(--field);
+    color: var(--text); outline: none; transition: border-color 0.2s;
+  }
+  .join-input:focus { border-color: var(--accent); }
+  
+  .btn-primary {
+    width: 100%; max-width: 240px; padding: 12px;
+    border-radius: 8px; border: none; background: var(--accent);
+    color: #fff; font-weight: 600; font-size: 14px; cursor: pointer; transition: 0.2s;
+  }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  .error-msg {
+    color: var(--danger); font-size: 12px; font-weight: 600;
+    min-height: 16px; text-align: center; margin-top: 4px;
+  }
+
+  /* Call Screen */
+  .call-screen {
+    flex: 1; display: flex; flex-direction: column; position: relative;
+    overflow: hidden;
+  }
+
+  /* Waiting State */
+  .waiting-state {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; color: var(--muted); animation: fadeIn 0.3s ease-out;
+  }
+  .waiting-icon {
+    width: 80px; height: 80px; border-radius: 50%; background: var(--field);
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+    border: 2px dashed var(--line);
+  }
+  .waiting-icon svg { width: 32px; height: 32px; }
+  .waiting-text { font-size: 14px; font-weight: 600; text-align: center; }
+  .waiting-subtext { font-size: 12px; opacity: 0.7; }
+
+  /* Dynamic Grid (Only Remote Users) */
+  .participants-grid {
+    flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+    gap: 24px; padding: 20px; overflow-y: auto;
+  }
+  .participant-card {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    animation: fadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+  
+  .avatar {
+    border-radius: 50%; background: var(--field); border: 3px solid var(--accent);
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px var(--accent-soft); transition: all 0.3s ease;
+  }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar .initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); font-weight: bold; }
+  
+  .participant-card .name { font-size: 15px; font-weight: 700; text-align: center; max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .participant-card .status { font-size: 12px; color: var(--accent); font-weight: 600; }
+  
+  /* Sizes based on REMOTE participant count */
+  .participants-grid[data-count="1"] .avatar { width: 160px; height: 160px; }
+  .participants-grid[data-count="1"] .avatar .initial { font-size: 3.5rem; }
+  .participants-grid[data-count="1"] .participant-card .name { font-size: 20px; }
+
+  .participants-grid[data-count="2"] .avatar { width: 120px; height: 120px; }
+  .participants-grid[data-count="2"] .avatar .initial { font-size: 2.5rem; }
+
+  .participants-grid[data-count="3"] .avatar,
+  .participants-grid[data-count="4"] .avatar { width: 90px; height: 90px; border-width: 2px; }
+  .participants-grid[data-count="3"] .avatar .initial,
+  .participants-grid[data-count="4"] .avatar .initial { font-size: 1.8rem; }
+  .participants-grid[data-count="3"] .participant-card .name,
+  .participants-grid[data-count="4"] .participant-card .name { font-size: 13px; }
+
+  .participants-grid[data-count="3"] { max-width: 340px; margin: 0 auto; } 
+  
+  /* Controls */
+  .controls {
+    display: flex; justify-content: center; gap: 24px;
+    padding: 24px; flex-shrink: 0;
+  }
+  .ctrl-btn {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    background: var(--field); color: var(--text); transition: transform 0.2s, background 0.2s;
+  }
+  .ctrl-btn:hover { transform: scale(1.05); filter: brightness(1.1); }
+  .ctrl-btn.active { background: var(--accent-soft); color: var(--accent); }
+  .ctrl-btn.danger { background: var(--danger); color: #fff; }
+  .ctrl-btn.danger:hover { background: #dc2626; }
+
+  .app-credit {
+    text-align: center; font-size: 11px; color: var(--muted);
+    padding: 8px; border-top: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+  }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+      Call-He
+    </h1>
+  </div>
+
+  <div class="main-content">
+    <!-- Pantalla de Unión -->
+    <div class="join-screen" id="join-screen">
+      <h1>Llamada P2P</h1>
+      <p>Ingresa un código de sala para conectar.<br>Soporta llamadas grupales.</p>
+      <input type="text" class="join-input" id="room-input" placeholder="Ej: 0308" maxlength="20">
+      <button class="btn-primary" id="btn-connect">Entrar a la Sala</button>
+      <p class="error-msg" id="error-msg"></p>
+    </div>
+
+    <!-- Pantalla de Llamada -->
+    <div class="call-screen" id="call-screen" style="display:none;">
+      
+      <!-- Estado de Espera (Cuando estás solo) -->
+      <div class="waiting-state" id="waiting-state">
+        <div class="waiting-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path></svg>
+        </div>
+        <div class="waiting-text">Sala: <span id="waiting-room-name" style="color:var(--text)"></span></div>
+        <div class="waiting-subtext">Esperando a que alguien se una...</div>
+      </div>
+
+      <!-- Grilla de Participantes (Solo se ven los demás) -->
+      <div class="participants-grid" id="participants-grid" style="display:none;"></div>
+      
+      <!-- Contenedor oculto para los audios remotos -->
+      <div id="audio-container" style="display:none;"></div>
+      
+      <div class="controls">
+        <button class="ctrl-btn" id="btn-mute" title="Silenciar micrófono">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </button>
+        <button class="ctrl-btn danger" id="btn-hangup" title="Colgar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"></path><line x1="23" y1="1" x2="1" y2="23"></line></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-credit">
+    P2P por <a href="https://peerjs.com" target="_blank">PeerJS</a>
+  </div>
+
+<script>
+  // 1. Sincronización de Tema y Perfil
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+    window.parent.postMessage({ type: 'myhub:perfil' }, '*');
+  }
+  
+  let myName = 'Tú';
+  let myAvatar = null;
+
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+    if (e.data?.type === 'myhub:perfil:res') {
+      const perfil = e.data.data;
+      if (perfil) {
+        myName = perfil.nombre || 'Tú';
+        myAvatar = perfil.foto || null;
+      }
+    }
+  });
+
+  // 2. DOM
+  const joinScreen = document.getElementById('join-screen');
+  const callScreen = document.getElementById('call-screen');
+  const roomInput = document.getElementById('room-input');
+  const btnConnect = document.getElementById('btn-connect');
+  const errorMsg = document.getElementById('error-msg');
+  
+  const waitingState = document.getElementById('waiting-state');
+  const waitingRoomName = document.getElementById('waiting-room-name');
+  const gridEl = document.getElementById('participants-grid');
+  const audioContainer = document.getElementById('audio-container');
+  
+  const btnMute = document.getElementById('btn-mute');
+  const btnHangup = document.getElementById('btn-hangup');
+
+  // 3. Estado Global
+  let peer = null;
+  let localStream = null;
+  let isHost = false;
+  let isMuted = false;
+  let myPeerId = '';
+  let fullRoomId = '';
+  
+  // Mapa de participantes remotos
+  let participants = {}; 
+
+  // 4. Renderizado de la Grilla
+  function renderGrid() {
+    const remotes = Object.keys(participants);
+    
+    if (remotes.length === 0) {
+      waitingState.style.display = 'flex';
+      gridEl.style.display = 'none';
+      return;
+    }
+
+    waitingState.style.display = 'none';
+    gridEl.style.display = 'flex';
+    gridEl.dataset.count = Math.min(remotes.length, 4);
+    gridEl.innerHTML = '';
+
+    for (const id of remotes) {
+      addCardToDOM(id, participants[id].name, participants[id].avatar);
+    }
+  }
+
+  function addCardToDOM(id, name, avatar) {
+    const card = document.createElement('div');
+    card.className = 'participant-card';
+    card.id = 'card-' + id;
+
+    let avatarHtml = '';
+    if (avatar) {
+      avatarHtml = `<img src="${avatar}" alt="${name}">`;
+    } else {
+      const letter = name.charAt(0).toUpperCase();
+      avatarHtml = `<div class="initial">${letter}</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="avatar">${avatarHtml}</div>
+      <div class="name">${name}</div>
+      <div class="status">Conectado</div>
+    `;
+    gridEl.appendChild(card);
+  }
+
+  // 5. Lógica de Conexión Mesh
+  btnConnect.onclick = async () => {
+    const room = roomInput.value.trim().toLowerCase();
+    if (!room) {
+      errorMsg.textContent = 'Ingresa un código de sala';
+      return;
+    }
+    
+    errorMsg.textContent = '';
+    btnConnect.disabled = true;
+    btnConnect.textContent = 'Conectando...';
+
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      errorMsg.textContent = 'Error al acceder al micrófono. Verifica los permisos.';
+      btnConnect.disabled = false;
+      btnConnect.textContent = 'Entrar a la Sala';
+      return;
+    }
+
+    fullRoomId = 'hecalls-' + room;
+    waitingRoomName.textContent = room;
+    
+    // Intentar crear la sala como Host
+    peer = new Peer(fullRoomId, { debug: 1 });
+
+    peer.on('open', (id) => {
+      isHost = true;
+      myPeerId = id;
+      enterRoomUI();
+      
+      // EL HOST ESCUCHA CONEXIONES ENTRANTES AQUÍ
+      peer.on('connection', (conn) => {
+        manejarDataConnection(conn);
+      });
+    });
+
+    peer.on('error', err => {
+      if (err.type === 'unavailable-id') {
+        // Somos invitados
+        peer.destroy();
+        peer = new Peer({ debug: 1 });
+        
+        peer.on('open', (id) => {
+          isHost = false;
+          myPeerId = id;
+          enterRoomUI();
+
+          const conn = peer.connect(fullRoomId);
+          manejarDataConnection(conn);
+        });
+      } else {
+        errorMsg.textContent = 'Error de conexión: ' + err.type;
+        btnConnect.disabled = false;
+        btnConnect.textContent = 'Entrar a la Sala';
+        if(localStream) localStream.getTracks().forEach(t => t.stop());
+      }
+    });
+
+    // Escuchar llamadas entrantes de audio (TODOS lo necesitan)
+    peer.on('call', call => {
+      call.answer(localStream);
+      call.on('stream', remoteStream => {
+        attachAudio(call.peer, remoteStream);
+      });
+    });
+  };
+
+  function enterRoomUI() {
+    joinScreen.style.display = 'none';
+    callScreen.style.display = 'flex';
+    renderGrid();
+  }
+
+  // Función unificada para manejar conexiones (entrantes y salientes)
+  function manejarDataConnection(conn) {
+    conn.on('open', () => {
+      // Enviar mi perfil ni bien se abre el canal
+      conn.send({ type: 'profile', name: myName, avatar: myAvatar });
+    });
+
+    conn.on('data', data => {
+      if (data.type === 'profile') {
+        // Registrar al nuevo participante
+        if (!participants[conn.peer]) {
+          participants[conn.peer] = { 
+            name: data.name, 
+            avatar: data.avatar, 
+            conn: conn // GUARDAMOS LA CONEXIÓN
+          };
+          renderGrid();
+          
+          // Si soy el Host, notifico a los demás
+          if (isHost) {
+            for (const id in participants) {
+              if (id !== conn.peer && participants[id].conn && participants[id].conn.open) {
+                participants[id].conn.send({ type: 'new_peer', peerId: conn.peer });
+              }
+            }
+          }
+          
+          // Iniciar llamada de audio (si no la hemos iniciado ya)
+          if (!participants[conn.peer].call) {
+            const call = peer.call(conn.peer, localStream);
+            participants[conn.peer].call = call;
+            call.on('stream', remoteStream => attachAudio(conn.peer, remoteStream));
+          }
+        }
+      }
+      
+      if (data.type === 'new_peer') {
+        // El Host me avisó de alguien nuevo, me conecto a él
+        if (!participants[data.peerId]) {
+          const newConn = peer.connect(data.peerId);
+          manejarDataConnection(newConn);
+        }
+      }
+    });
+    
+    conn.on('close', () => {
+      removeParticipant(conn.peer);
+    });
+  }
+
+  // 6. Manejo de Audio
+  function attachAudio(peerId, stream) {
+    let audioEl = document.getElementById('audio-' + peerId);
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = 'audio-' + peerId;
+      audioEl.autoplay = true;
+      audioContainer.appendChild(audioEl);
+    }
+    audioEl.srcObject = stream;
+  }
+
+  function removeParticipant(peerId) {
+    if (participants[peerId]) {
+      if (participants[peerId].call) {
+        try { participants[peerId].call.close(); } catch(e){}
+      }
+      delete participants[peerId];
+      
+      const audioEl = document.getElementById('audio-' + peerId);
+      if (audioEl) audioEl.remove();
+      
+      renderGrid();
+    }
+  }
+
+  // 7. Controles
+  btnMute.onclick = () => {
+    if (!localStream) return;
+    isMuted = !isMuted;
+    localStream.getAudioTracks()[0].enabled = !isMuted;
+    btnMute.classList.toggle('active', isMuted);
+    
+    if (isMuted) {
+      btnMute.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>';
+    } else {
+      btnMute.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>';
+    }
+  };
+
+  btnHangup.onclick = () => hangup('Llamada finalizada');
+
+  function hangup(reason) {
+    for (const id in participants) {
+      if (participants[id].call) {
+        try { participants[id].call.close(); } catch(e){}
+      }
+      if (participants[id].conn) {
+        try { participants[id].conn.close(); } catch(e){}
+      }
+    }
+    if (peer) { try { peer.destroy(); } catch(e){} }
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    
+    joinScreen.style.display = 'flex';
+    callScreen.style.display = 'none';
+    btnConnect.disabled = false;
+    btnConnect.textContent = 'Entrar a la Sala';
+    
+    btnMute.classList.remove('active');
+    isMuted = false;
+    btnMute.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>';
+    
+    errorMsg.textContent = reason || '';
+    
+    participants = {};
+    audioContainer.innerHTML = '';
+    peer = null;
+    localStream = null;
+  }
+
+  window.addEventListener('beforeunload', () => hangup(''));
+</script>
+</body>
+</html>
