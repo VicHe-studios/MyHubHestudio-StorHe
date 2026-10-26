@@ -17,7 +17,18 @@
   .title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; }
   .title svg { width: 15px; height: 15px; color: var(--accent); flex-shrink: 0; }
   .tag { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
-  .list { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  
+  /* --- SCROLLBAR AÑADIDA --- */
+  .list { 
+    flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; 
+    padding-right: 4px; /* Separación para que el texto no toque la barra */
+  }
+  .list::-webkit-scrollbar { width: 4px; }
+  .list::-webkit-scrollbar-track { background: transparent; }
+  .list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .list::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  /* -------------------------- */
+
   .post { padding: 7px 0; border-bottom: 1px solid var(--line); min-width: 0; }
   .post:last-child { border-bottom: none; }
   .meta { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
