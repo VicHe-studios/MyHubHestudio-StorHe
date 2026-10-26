@@ -1,0 +1,8 @@
+{
+  "id": "foto-he",
+  "titulo": "Foto-He",
+  "icono": "image-plus",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Editor de fotos con filtros, ajustes y transformaciones"
+}
