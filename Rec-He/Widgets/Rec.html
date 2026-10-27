@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --accent: #2563eb;
+    --text: #0b1220;
+    --muted: #64748b;
+    --field: #f6f8fb;
+    --line: rgba(15, 23, 42, 0.08);
+    --danger: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --field: #2a2a31;
+    --line: rgba(255, 255, 255, 0.09);
+  }
+  * { box-sizing: border-box; }
+  
+  body {
+    margin: 0; height: 100vh; width: 100vw;
+    background: transparent; overflow: hidden; border-radius: 16px;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    color: var(--text); display: flex; align-items: center;
+    padding: 0 12px; gap: 10px;
+    user-select: none; cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  body:hover { background: rgba(0,0,0,0.03); }
+  html[data-modo="oscuro"] body:hover { background: rgba(255,255,255,0.03); }
+  body.disabled { cursor: not-allowed; opacity: 0.6; }
+
+  /* Botón un poco más ajustado */
+  .btn-visual {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--field); border: 2px solid var(--line);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .btn-visual svg { width: 18px; height: 18px; transition: transform 0.3s; }
+  
+  .btn-visual.recording {
+    background: var(--danger); border-color: var(--danger); color: #fff;
+    animation: pulse 1.5s infinite;
+  }
+  .btn-visual.recording svg { transform: scale(0.8); }
+
+  /* Textos */
+  .text-box {
+    display: flex; flex-direction: column; gap: 2px; 
+    flex: 1; min-width: 0; justify-content: center;
+  }
+  .title {
+    font-size: 14px; font-weight: 800; /* Un poco más grueso */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: color 0.3s;
+  }
+  .title.recording { color: var(--danger); }
+  
+  .subtitle {
+    font-size: 11px; font-weight: 500; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Temporizador Grande */
+  .timer {
+    font-family: 'SF Pro Display', monospace;
+    font-size: 20px; font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--danger);
+    display: none;
+  }
+  .timer.active { display: block; animation: fadeIn 0.3s; }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body id="widget-body">
+
+  <div class="btn-visual" id="btn-visual">
+    <svg id="icon-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+      <line x1="12" x2="12" y1="19" y2="22"/>
+    </svg>
+    <svg id="icon-stop" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+      <rect x="6" y="6" width="12" height="12" rx="3"/>
+    </svg>
+  </div>
+
+  <div class="text-box">
+    <div class="title" id="title">Rec-He</div>
+    <div class="subtitle" id="subtitle">Toca aquí</div>
+    <div class="timer" id="timer">00:00</div>
+  </div>
+
+<script>
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+    }
+  });
+
+  const DB_NAME = 'rec_he_db';
+  const DB_VERSION = 1;
+  const NP_KEY = 'rec_he_state';
+  
+  let db, mediaRecorder, audioChunks = [];
+  let isRecording = false, recStartTime = 0, timerInterval = null;
+  let suppressWrite = false;
+  let isBlockedByApp = false;
+
+  const body = document.getElementById('widget-body');
+  const btnVisual = document.getElementById('btn-visual');
+  const iconMic = document.getElementById('icon-mic');
+  const iconStop = document.getElementById('icon-stop');
+  const titleEl = document.getElementById('title');
+  const subtitleEl = document.getElementById('subtitle');
+  const timerEl = document.getElementById('timer');
+
+  const dbReady = new Promise((resolve) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onsuccess = (e) => { db = e.target.result; resolve(); };
+    req.onerror = () => resolve();
+  });
+
+  function dbPut(item) {
+    return new Promise((res) => {
+      const t = db.transaction('recordings', 'readwrite');
+      t.objectStore('recordings').put(item);
+      t.oncomplete = () => res();
+    });
+  }
+
+  function writeState() {
+    if (suppressWrite) return;
+    try {
+      localStorage.setItem(NP_KEY, JSON.stringify({
+        isRecording,
+        startTime: isRecording ? recStartTime : 0,
+        source: 'widget',
+        ts: Date.now()
+      }));
+    } catch(e) {}
+  }
+
+  window.addEventListener('storage', (e) => {
+    if (e.key !== NP_KEY) return;
+    try {
+      const state = JSON.parse(e.newValue || '{}');
+      if (state.source === 'app' && state.isRecording) {
+        blockWidget('App grabando', 'En la app...');
+      } else if (state.source === 'app' && !state.isRecording) {
+        unblockWidget();
+      }
+    } catch(err) {}
+  });
+
+  function blockWidget(title, sub) {
+    isBlockedByApp = true;
+    suppressWrite = true;
+    body.classList.add('disabled');
+    titleEl.textContent = title;
+    subtitleEl.textContent = sub;
+    btnVisual.classList.remove('recording');
+    iconMic.style.display = 'block';
+    iconStop.style.display = 'none';
+    timerEl.classList.remove('active');
+  }
+
+  function unblockWidget() {
+    isBlockedByApp = false;
+    suppressWrite = false;
+    body.classList.remove('disabled');
+    updateUI();
+  }
+
+  body.onclick = async (e) => {
+    if (isBlockedByApp) return;
+    if (isRecording) { stopRecording(); return; }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const duration = (Date.now() - recStartTime) / 1000;
+        
+        const rec = {
+          id: 'rec_' + Date.now(),
+          name: `Nota ${new Date().toLocaleTimeString()}`,
+          blob, duration, date: Date.now()
+        };
+        
+        await dbReady;
+        await dbPut(rec);
+        stream.getTracks().forEach(t => t.stop());
+        
+        localStorage.setItem('rec_he_update', Date.now());
+        titleEl.textContent = '¡Guardado!';
+        setTimeout(updateUI, 2000);
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      recStartTime = Date.now();
+      
+      updateUI();
+      writeState();
+
+    } catch (err) {
+      titleEl.textContent = 'Error';
+      subtitleEl.textContent = 'Abre la app';
+      setTimeout(updateUI, 3000);
+    }
+  };
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+    updateUI();
+    writeState();
+  }
+
+  function updateUI() {
+    if (isBlockedByApp) return;
+    clearInterval(timerInterval);
+
+    if (isRecording) {
+      btnVisual.classList.add('recording');
+      iconMic.style.display = 'none';
+      iconStop.style.display = 'block';
+      
+      titleEl.classList.add('recording');
+      titleEl.textContent = 'Grabando';
+      
+      subtitleEl.style.display = 'none';
+      timerEl.classList.add('active');
+      
+      timerInterval = setInterval(() => {
+        const diff = (Date.now() - recStartTime) / 1000;
+        const m = Math.floor(diff / 60).toString().padStart(2, '0');
+        const s = Math.floor(diff % 60).toString().padStart(2, '0');
+        timerEl.textContent = `${m}:${s}`;
+      }, 1000);
+
+    } else {
+      btnVisual.classList.remove('recording');
+      iconMic.style.display = 'block';
+      iconStop.style.display = 'none';
+      
+      titleEl.classList.remove('recording');
+      titleEl.textContent = 'Rec-He';
+      
+      subtitleEl.style.display = 'block';
+      subtitleEl.textContent = 'Toca aquí';
+      
+      timerEl.classList.remove('active');
+      timerEl.textContent = '00:00';
+    }
+  }
+
+  (async function init() {
+    await dbReady;
+    try {
+      const raw = localStorage.getItem(NP_KEY);
+      if (raw) {
+        const state = JSON.parse(raw);
+        if (state.isRecording && state.source === 'app') {
+          blockWidget('App grabando', 'En la app...');
+          return;
+        }
+      }
+    } catch(e) {}
+    updateUI();
+  })();
+</script>
+</body>
+</html>
