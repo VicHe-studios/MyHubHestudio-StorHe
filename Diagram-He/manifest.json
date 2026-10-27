@@ -1,0 +1,8 @@
+{
+  "id": "diagram-he",
+  "titulo": "Diagram-He",
+  "icono": "workflow",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Diagramas visuales con nodos, conexiones y export PNG"
+}
