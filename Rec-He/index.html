@@ -1,1 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+    --rec-color: #ef4444;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100vh; width: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--card); color: var(--text);
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 
+  /* Header */
+  .header {
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .header-title svg { width: 16px; height: 16px; color: var(--accent); }
+  .storage-info { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+  /* Lista de Audios */
+  .recordings-list {
+    flex: 1; overflow-y: auto; padding: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  
+  .recording-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px;
+    background: var(--field); border: 1px solid var(--line);
+    transition: border-color 0.2s;
+  }
+  .recording-card:hover { border-color: var(--accent); }
+  .recording-card.playing { border-color: var(--accent); background: var(--accent-soft); }
+
+  .play-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: var(--card); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.1s, background 0.2s;
+    flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+  .play-btn:hover { transform: scale(1.05); background: var(--accent); color: #fff; }
+  .play-btn svg { width: 16px; height: 16px; margin-left: 2px; }
+  .play-btn.playing svg { margin-left: 0; }
+
+  .rec-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .rec-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rec-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; }
+  
+  .rec-actions { display: flex; gap: 4px; }
+  .btn-icon {
+    background: transparent; border: none; color: var(--muted); cursor: pointer;
+    padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    transition: 0.2s;
+  }
+  .btn-icon:hover { background: var(--card); color: var(--text); }
+  .btn-icon.danger:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+  .btn-icon svg { width: 16px; height: 16px; }
+
+  /* Footer de Grabación */
+  .record-footer {
+    padding: 16px; border-top: 1px solid var(--line);
+    background: var(--card); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; gap: 20px;
+  }
+
+  .rec-timer {
+    font-family: monospace; font-size: 18px; font-weight: 700;
+    color: var(--text); opacity: 0; transition: opacity 0.2s;
+    width: 80px; text-align: right;
+  }
+  .rec-timer.active { opacity: 1; }
+
+  .record-btn {
+    width: 64px; height: 64px; border-radius: 50%; border: 4px solid var(--card);
+    background: var(--danger); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    transition: transform 0.1s, background 0.2s;
+  }
+  .record-btn:hover { transform: scale(1.05); }
+  .record-btn svg { width: 28px; height: 28px; }
+  
+  .record-btn.recording {
+    background: var(--danger); animation: pulse 1.5s infinite;
+  }
+  .record-btn.recording svg { border-radius: 4px; background: #fff; fill: #fff; width: 20px; height: 20px; }
+
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+    70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  }
+
+  .rec-space { width: 80px; }
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; color: var(--muted); gap: 10px; font-size: 13px; text-align: center;
+  }
+  .empty-state svg { width: 40px; height: 40px; opacity: 0.4; }
+
+  /* Modales y Toast (ADN) */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 16px; padding: 20px; width: 100%; max-width: 320px;
+    border: 1px solid var(--line); box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .modal h3 { margin: 0; font-size: 15px; font-weight: 700; }
+  .input {
+    padding: 10px 12px; border-radius: 10px; border: 1.5px solid var(--line);
+    background: var(--field); color: var(--text); font-family: inherit; font-size: 13px; outline: none;
+  }
+  .input:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .btn { padding: 8px 14px; border-radius: 8px; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; border: none; transition: 0.2s; }
+  .btn.gray { background: var(--field); color: var(--text); border: 1px solid var(--line); }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .btn:hover { filter: brightness(1.1); }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card); padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22,1,.36,1); pointer-events: none; z-index: 1000;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="header-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+        Rec-He
+      </div>
+      <div class="storage-info" id="storage-text">0 MB / 15 MB</div>
+    </div>
+  </div>
+
+  <div class="recordings-list" id="list">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      <p>No hay grabaciones aún.<br>Pulsa el botón rojo para empezar.</p>
+    </div>
+  </div>
+
+  <div class="record-footer">
+    <div class="rec-timer" id="timer">00:00</div>
+    <button class="record-btn" id="btn-record" title="Grabar">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/></svg>
+    </button>
+    <div class="rec-space"></div>
+  </div>
+
+  <!-- Modales -->
+  <div class="modal-overlay" id="modal-rename">
+    <div class="modal">
+      <h3>Renombrar grabación</h3>
+      <input type="text" class="input" id="rename-input" placeholder="Nombre del audio" maxlength="40">
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-rename">Cancelar</button>
+        <button class="btn primary" id="btn-save-rename">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-confirm">
+    <div class="modal">
+      <h3 id="confirm-title">Eliminar grabación</h3>
+      <p id="confirm-msg" style="margin:0; font-size:13px; color:var(--muted); line-height:1.4;">¿Estás seguro de que deseas eliminar este audio?</p>
+      <div class="modal-actions">
+        <button class="btn gray" id="btn-cancel-confirm">Cancelar</button>
+        <button class="btn danger" id="btn-accept-confirm">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <audio id="audio-player"></audio>
+
+<script>
+  // ============ TEMA ============
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  // ============ CONFIGURACIÓN ============
+  const DB_NAME = 'rec_he_db';
+  const DB_VERSION = 1;
+  const MAX_STORAGE = 15 * 1024 * 1024;
+  const NP_KEY = 'rec_he_state';
+
+  let db, recordings = [];
+  let mediaRecorder = null;
+  let audioChunks = [];
+  let isRecording = false;
+  let recStartTime = 0;
+  let timerInterval = null;
+  
+  let currentAudio = null;
+  let currentPlayingId = null;
+  let audioUrl = null;
+
+  // DOM
+  const listEl = document.getElementById('list');
+  const btnRecord = document.getElementById('btn-record');
+  const timerEl = document.getElementById('timer');
+  const audioPlayer = document.getElementById('audio-player');
+  const toastEl = document.getElementById('toast');
+
+  // ============ UTILS ============
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 3000);
+  }
+
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  function formatSize(bytes) {
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  // ============ INDEXEDDB ============
+  const dbReady = new Promise((resolve) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('recordings')) d.createObjectStore('recordings', { keyPath: 'id' });
+    };
+    req.onsuccess = (e) => { db = e.target.result; resolve(); };
+    req.onerror = () => resolve();
+  });
+
+  function dbGetAll() {
+    return new Promise((res) => {
+      const tx = db.transaction('recordings', 'readonly').objectStore('recordings').getAll();
+      tx.onsuccess = () => res(tx.result || []);
+      tx.onerror = () => res([]);
+    });
+  }
+  function dbPut(item) {
+    return new Promise((res) => {
+      const t = db.transaction('recordings', 'readwrite');
+      t.objectStore('recordings').put(item);
+      t.oncomplete = () => res();
+    });
+  }
+  function dbDelete(id) {
+    return new Promise((res) => {
+      const t = db.transaction('recordings', 'readwrite');
+      t.objectStore('recordings').delete(id);
+      t.oncomplete = () => res();
+    });
+  }
+
+  // ============ RENDERIZADO ============
+  async function loadData() {
+    recordings = await dbGetAll();
+    recordings.sort((a, b) => b.date - a.date);
+    
+    // Storage
+    const total = recordings.reduce((a, r) => a + (r.blob ? r.blob.size : 0), 0);
+    document.getElementById('storage-text').textContent = `${formatSize(total)} / 15 MB`;
+
+    renderList();
+  }
+
+  function renderList() {
+    if (recordings.length === 0) {
+      listEl.innerHTML = `
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+          <p>No hay grabaciones aún.<br>Pulsa el botón rojo para empezar.</p>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = '';
+    recordings.forEach(r => {
+      const isPlaying = currentPlayingId === r.id && !audioPlayer.paused;
+      
+      const card = document.createElement('div');
+      card.className = `recording-card ${isPlaying ? 'playing' : ''}`;
+      card.innerHTML = `
+        <button class="play-btn ${isPlaying ? 'playing' : ''}">
+          ${isPlaying 
+            ? '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>' 
+            : '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>'}
+        </button>
+        <div class="rec-info">
+          <span class="rec-name">${escapeHtml(r.name)}</span>
+          <div class="rec-meta">
+            <span>${formatTime(r.duration)}</span>
+            <span>${formatSize(r.blob.size)}</span>
+            <span>${new Date(r.date).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div class="rec-actions">
+          <button class="btn-icon btn-download" title="Descargar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button class="btn-icon btn-rename" title="Renombrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+          </button>
+          <button class="btn-icon danger btn-delete" title="Eliminar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>
+      `;
+
+      card.querySelector('.play-btn').onclick = () => togglePlay(r);
+      
+      card.querySelector('.btn-download').onclick = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(r.blob);
+        a.download = `${r.name}.webm`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      };
+
+      card.querySelector('.btn-rename').onclick = () => openRenameModal(r);
+      
+      card.querySelector('.btn-delete').onclick = () => {
+        confirmDelete(r.id, r.name);
+      };
+
+      listEl.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // ============ REPRODUCCIÓN ============
+  function togglePlay(rec) {
+    if (currentPlayingId === rec.id && !audioPlayer.paused) {
+      audioPlayer.pause();
+      return;
+    }
+
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    audioUrl = URL.createObjectURL(rec.blob);
+    audioPlayer.src = audioUrl;
+    audioPlayer.play();
+    currentPlayingId = rec.id;
+    renderList();
+  }
+
+  audioPlayer.onended = () => {
+    currentPlayingId = null;
+    renderList();
+  };
+  audioPlayer.onpause = () => {
+    renderList();
+  };
+  audioPlayer.onplay = () => {
+    renderList();
+  };
+
+  // ============ GRABACIÓN ============
+  btnRecord.onclick = async () => {
+    if (isRecording) {
+      stopRecording();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        const duration = (Date.now() - recStartTime) / 1000;
+        
+        // Chequear límite
+        const currentTotal = recordings.reduce((a, r) => a + (r.blob ? r.blob.size : 0), 0);
+        if (currentTotal + blob.size > MAX_STORAGE) {
+          toast('Límite de 15MB alcanzado. Borra algunos audios.');
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        const rec = {
+          id: 'rec_' + Date.now(),
+          name: `Grabación ${new Date().toLocaleTimeString()}`,
+          blob,
+          duration,
+          date: Date.now()
+        };
+        
+        await dbPut(rec);
+        await loadData();
+        stream.getTracks().forEach(t => t.stop());
+        toast('Grabación guardada');
+      };
+
+      mediaRecorder.start();
+      isRecording = true;
+      recStartTime = Date.now();
+      
+      btnRecord.classList.add('recording');
+      timerEl.classList.add('active');
+      timerEl.textContent = '00:00';
+      
+      timerInterval = setInterval(() => {
+        const diff = (Date.now() - recStartTime) / 1000;
+        timerEl.textContent = formatTime(diff);
+      }, 1000);
+
+      syncWidget();
+
+    } catch (err) {
+      toast('No se pudo acceder al micrófono: ' + err.message);
+    }
+  };
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+    isRecording = false;
+    clearInterval(timerInterval);
+    btnRecord.classList.remove('recording');
+    timerEl.classList.remove('active');
+    syncWidget();
+  }
+
+  // ============ MODALES ============
+  let renamingId = null;
+  const modalRename = document.getElementById('modal-rename');
+  
+  function openRenameModal(rec) {
+    renamingId = rec.id;
+    document.getElementById('rename-input').value = rec.name;
+    modalRename.classList.add('active');
+    setTimeout(() => document.getElementById('rename-input').focus(), 50);
+  }
+
+  document.getElementById('btn-cancel-rename').onclick = () => modalRename.classList.remove('active');
+  document.getElementById('btn-save-rename').onclick = async () => {
+    const newName = document.getElementById('rename-input').value.trim();
+    if (!newName || !renamingId) return;
+    const rec = recordings.find(r => r.id === renamingId);
+    if (rec) {
+      rec.name = newName;
+      await dbPut(rec);
+      await loadData();
+      toast('Renombrado');
+    }
+    modalRename.classList.remove('active');
+  };
+
+  let deleteId = null;
+  const modalConfirm = document.getElementById('modal-confirm');
+  
+  function confirmDelete(id, name) {
+    deleteId = id;
+    document.getElementById('confirm-msg').textContent = `¿Eliminar "${name}" permanentemente?`;
+    modalConfirm.classList.add('active');
+  }
+
+  document.getElementById('btn-cancel-confirm').onclick = () => modalConfirm.classList.remove('active');
+  document.getElementById('btn-accept-confirm').onclick = async () => {
+    if (deleteId) {
+      if (currentPlayingId === deleteId) {
+        audioPlayer.pause();
+        currentPlayingId = null;
+      }
+      await dbDelete(deleteId);
+      await loadData();
+      toast('Grabación eliminada');
+    }
+    modalConfirm.classList.remove('active');
+  };
+
+  // ============ WIDGET SYNC ============
+  function syncWidget() {
+    try {
+      localStorage.setItem(NP_KEY, JSON.stringify({
+        isRecording: isRecording,
+        startTime: isRecording ? recStartTime : 0,
+        ts: Date.now()
+      }));
+    } catch(e) {}
+  }
+
+  // ============ INIT ============
+  (async function init() {
+    await dbReady;
+    await loadData();
+    syncWidget();
+  })();
+</script>
+</body>
+</html>
