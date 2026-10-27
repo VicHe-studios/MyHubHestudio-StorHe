@@ -1,0 +1,11 @@
+{
+  "id": "rec-he",
+  "titulo": "Rec-He",
+  "icono": "mic",
+  "main": "index.html",
+  "autor": "VicHeStudios",
+  "descripcion": "Graba notas de voz y guárdalas localmente",
+  "widgets": [
+    { "file": "Widgets/Rec.html", "size": "2x1" }
+  ]
+}
