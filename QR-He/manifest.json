@@ -4,5 +4,8 @@
   "icono": "qr-code",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "Generador rápido de códigos QR"
+  "descripcion": "Generador rápido de códigos QR",
+  "widgets": [
+    { "file": "Widgets/QR-He.html", "size": "1x1" }
+  ]
 }
