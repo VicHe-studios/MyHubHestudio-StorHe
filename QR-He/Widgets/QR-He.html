@@ -1,0 +1,97 @@
+<div class="qw" id="qw" title="Abrir QR-He" role="button" tabindex="0">
+  <div class="qw-icon">
+    <i data-lucide="qr-code"></i>
+    <span class="qw-dot" id="qw-dot"></span>
+  </div>
+  <span class="qw-label">QR-He</span>
+</div>
+
+<style>
+  body { margin: 0; }
+  * { box-sizing: border-box; }
+
+  .qw {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px; cursor: pointer;
+    color: var(--text, #0b1220);
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    user-select: none;
+    transition: transform .15s ease;
+  }
+  .qw:active { transform: scale(0.94); }
+
+  .qw-icon {
+    position: relative;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--accent, #2563eb) 15%, transparent);
+  }
+  .qw-icon svg {
+    width: 22px; height: 22px;
+    color: var(--accent, #2563eb);
+  }
+
+  /* Puntito indicador: hay un QR guardado */
+  .qw-dot {
+    position: absolute; top: -2px; right: -2px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #22c55e;
+    border: 2px solid var(--card, #fff);
+    display: none;
+  }
+  .qw-dot.on { display: block; }
+
+  .qw-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .3px; text-transform: uppercase;
+    color: var(--muted, #64748b);
+  }
+</style>
+
+<script>
+  // Tema heredado del sistema
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      if (e.data.color) document.documentElement.style.setProperty('--accent', e.data.color);
+    }
+  });
+
+  // Lee si hay un QR guardado (por si algún día la app lo escribe).
+  // Si no existe, el widget funciona igual: solo abre la app.
+  const KEY = 'qr-he:last';
+  function refreshDot() {
+    const dot = document.getElementById('qw-dot');
+    try {
+      const raw = localStorage.getItem(KEY);
+      dot.classList.toggle('on', !!raw);
+    } catch { dot.classList.remove('on'); }
+  }
+
+  // Abrir la app en el hub
+  function openApp() {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'myhub:open', id: 'qr-he' }, '*');
+    } else {
+      window.open('../index.html', '_blank');
+    }
+  }
+
+  const el = document.getElementById('qw');
+  el.addEventListener('click', openApp);
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openApp(); }
+  });
+
+  window.addEventListener('storage', (e) => {
+    if (e.key === KEY) refreshDot();
+  });
+
+  refreshDot();
+  if (window.lucide) lucide.createIcons();
+  else setTimeout(() => window.lucide && lucide.createIcons(), 300);
+</script>
