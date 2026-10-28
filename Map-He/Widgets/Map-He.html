@@ -5,28 +5,41 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   * { box-sizing: border-box; }
+  
   html, body {
     margin: 0; height: 100vh; width: 100vw;
-    background: transparent; overflow: hidden; border-radius: 16px;
+    background: transparent; overflow-y: hidden; 
+    overflow-x: auto; /* Aquí activamos el scroll horizontal */
+    border-radius: 16px;
     font-family: 'Segoe UI Variable', system-ui, sans-serif;
   }
 
-  #map {
-    width: 100%; height: 100%; z-index: 1;
-    border-radius: 16px; background: #e5e5e5;
+  /* Scrollbar fina y estilizada para el widget */
+  ::-webkit-scrollbar {
+    height: 5px;
   }
-
-  /* Ocultar todos los controles para un look ultra limpio */
-  .leaflet-control-zoom { display: none; }
-  .leaflet-control-attribution { display: none !important; }
-
-  /* Punto central minimalista */
-  .center-dot {
-    width: 8px; height: 8px; border-radius: 50%;
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--line, rgba(255,255,255,0.2));
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
     background: var(--accent, #2563eb);
-    border: 1.5px solid #fff;
-    box-shadow: 0 0 8px rgba(0,0,0,0.4);
   }
+
+  /* El mapa es 3 veces más ancho que el widget para ver todo el mundo */
+  #map {
+    width: 300%; 
+    height: 100%; 
+    z-index: 1;
+    border-radius: 16px 0 0 16px;
+    background: #e5e5e5;
+  }
+
+  /* Ocultar controles de Leaflet */
+  .leaflet-control-zoom, .leaflet-control-attribution { display: none !important; }
 </style>
 </head>
 <body>
@@ -62,7 +75,7 @@
       tileLayer = L.tileLayer(url, { maxZoom: 18 }).addTo(map);
     };
 
-    // 3. Inicializar Mapa Global (Zoom 2 para ver continentes)
+    // 3. Inicializar Mapa
     map = L.map('map', {
       zoomControl: false,
       dragging: false,
@@ -73,23 +86,14 @@
       keyboard: false,
       zoomAnimation: false,
       attributionControl: false
-    }).setView([20, 0], 2); // Centro en el ecuador, zoom 2 para ver el mundo
+    }).setView([20, 0], 1); // Zoom 1 para ver el mundo
 
     setMapTheme('claro');
 
-    // 4. Icono Central (Solo un punto sutil)
-    const centerIcon = L.divIcon({
-      className: 'center-icon',
-      html: `<div class="center-dot"></div>`,
-      iconSize: [8, 8],
-      iconAnchor: [4, 4]
-    });
-
-    // Poner un marcador en el centro del mundo para que no se vea vacío
-    L.marker([20, 0], { icon: centerIcon }).addTo(map);
-
-    // Fix para que Leaflet calcule bien el tamaño en un iframe
-    setTimeout(() => map.invalidateSize(), 200);
+    // 4. Ajuste de tamaño para el contenedor expandido
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
   </script>
 </body>
 </html>
