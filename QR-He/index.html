@@ -43,9 +43,27 @@
     margin: auto; 
   }
 
-  .header { text-align: center; margin-bottom: 8px; }
+  .header {
+    text-align: center; margin-bottom: 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
   .header h1 { margin: 0; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .header h1 svg { width: 20px; height: 20px; color: var(--accent); }
+
+  /* Badge de almacenamiento (igual que Galeria-He / Silly cupboard) */
+  .storage-info {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 600;
+    color: var(--muted);
+    background: var(--field);
+    padding: 2px 8px; border-radius: 6px;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .storage-info.warn {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
 
   textarea {
     width: 100%; height: 80px; resize: none; padding: 12px;
@@ -103,6 +121,7 @@
   <div class="container">
     <div class="header">
       <h1><i data-lucide="qr-code"></i> Generador QR</h1>
+      <div class="storage-info" id="storage-info">0.00 MB usados (máx 5 MB)</div>
     </div>
     
     <textarea id="input-text" placeholder="Escribe un texto o pega un enlace aquí..."></textarea>
@@ -124,7 +143,6 @@
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
-  <!-- Cambiado a CDN para evitar error 404 -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script>
     if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
@@ -145,8 +163,66 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
     }
 
-    // --- LÍMITE DE 5 MB PARA EL PNG GUARDADO ---
-    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+    /* ============================================================
+       MÉTODO DE GUARDADO (igual al de Galeria-He)
+       - base64 en localStorage
+       - tamaño = base64.length * 0.75  ← Galeria-He
+       - try/catch con fallback si la cuota se llena ← Galeria-He
+       - pre-check MAX_STORAGE antes de escribir ← Silly cupboard
+       - badge con MB usados ← ambas
+       ============================================================ */
+    const STORAGE_KEY = 'qr-he:last';           // misma llave que lee el widget 1x1
+    const MAX_STORAGE = 5 * 1024 * 1024;        // 5 MB
+
+    function calcSizeBytes(base64) {
+      // Galeria-He: base64.length * 0.75
+      return base64 ? base64.length * 0.75 : 0;
+    }
+
+    function formatMB(bytes) {
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function updateStorageBadge() {
+      const badge = document.getElementById('storage-info');
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          badge.textContent = '0.00 MB usados (máx 5 MB)';
+          badge.classList.remove('warn');
+          return;
+        }
+        const item = JSON.parse(raw);
+        const bytes = calcSizeBytes(item.base64);
+        badge.textContent = `${formatMB(bytes)} usados (máx 5 MB)`;
+        badge.classList.toggle('warn', bytes > MAX_STORAGE * 0.9);
+      } catch {
+        badge.textContent = '—';
+      }
+    }
+
+    function saveQR(text, base64) {
+      const sizeBytes = calcSizeBytes(base64);
+
+      // Pre-check (estilo Silly cupboard)
+      if (sizeBytes > MAX_STORAGE) {
+        showToast('El QR supera el límite de 5 MB', 'error');
+        return;
+      }
+
+      const item = { id: Date.now(), text, base64, date: Date.now() };
+
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(item));
+      } catch (e) {
+        // Fallback (estilo Galeria-He): cuota llena → limpia y avisa
+        showToast('Límite de almacenamiento alcanzado.', 'error');
+        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      }
+
+      updateStorageBadge();
+    }
+    /* ============================================================ */
 
     const inputText = document.getElementById('input-text');
     const btnGenerate = document.getElementById('btn-generate');
@@ -178,22 +254,12 @@
 
       btnDownload.style.display = 'flex';
 
-      // --- GUARDAR ÚLTIMO QR (con tope de 5 MB) ---
-      try {
-        const c = qrBox.querySelector('canvas');
-        if (c) {
-          const dataUrl = c.toDataURL('image/png');
-          const payload = JSON.stringify({ text, dataUrl, ts: Date.now() });
-          const sizeBytes = new Blob([payload]).size;
-
-          if (sizeBytes > MAX_BYTES) {
-            showToast('El QR supera 5 MB, no se guardó', 'error');
-          } else {
-            localStorage.setItem('qr-he:last', payload);
-          }
-        }
-      } catch {}
-      // ---------------------------------------------
+      // Guardar con el método de Galeria-He
+      const c = qrBox.querySelector('canvas');
+      if (c) {
+        const base64 = c.toDataURL('image/png');
+        saveQR(text, base64);
+      }
     };
 
     btnDownload.onclick = () => {
@@ -212,6 +278,7 @@
       showToast('Imagen descargada');
     };
 
+    updateStorageBadge();
     if (window.lucide) lucide.createIcons();
   </script>
 </body>
