@@ -4,8 +4,5 @@
   "icono": "map",
   "main": "index.html",
   "autor": "VicHeStudios",
-  "descripcion": "Explora mapas y busca lugares del mundo",
-  "widgets": [
-    { "file": "Widgets/Map-He.html", "size": "1x1" }
-  ]
+  "descripcion": "Explora mapas y busca lugares del mundo"
 }
