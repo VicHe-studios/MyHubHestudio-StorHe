@@ -1,7 +1,8 @@
 <div class="qw" id="qw" role="button" tabindex="0" title="Abrir QR-He">
-  <img id="qw-img" alt="QR" style="display:none;">
+  <img id="qw-img" alt="QR Favorito" style="display:none;">
   <div class="qw-placeholder" id="qw-placeholder">
     <i data-lucide="qr-code"></i>
+    <span>Sin Fav</span>
   </div>
 </div>
 
@@ -9,27 +10,27 @@
   html, body { margin: 0; height: 100%; width: 100%; }
   * { box-sizing: border-box; }
   .qw {
-    width: 100%; height: 100%;
-    position: relative;
+    width: 100%; height: 100%; position: relative;
     display: flex; align-items: center; justify-content: center;
-    cursor: pointer; user-select: none;
-    padding: 4px;
+    cursor: pointer; user-select: none; padding: 4px;
     transition: transform .15s ease;
   }
   .qw:active { transform: scale(0.96); }
+  
   .qw img {
-    width: 100%; height: 100%;
-    object-fit: contain;
-    border-radius: 8px;
-    background: #fff;
-    display: block;
+    width: 100%; height: 100%; object-fit: contain;
+    border-radius: 8px; background: #fff; display: block;
   }
+  
   .qw-placeholder {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; height: 100%;
-    color: var(--muted, #64748b);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    width: 100%; height: 100%; color: var(--muted, #64748b);
+    background: var(--field, #f6f8fb); border-radius: 8px;
+    border: 1px dashed var(--line, rgba(15,23,42,0.08));
+    gap: 4px;
   }
-  .qw-placeholder svg { width: 55%; height: 55%; opacity: 0.4; }
+  .qw-placeholder svg { width: 24px; height: 24px; opacity: 0.5; }
+  .qw-placeholder span { font-size: 10px; font-weight: 700; text-transform: uppercase; }
 </style>
 
 <script>
@@ -48,11 +49,11 @@
   function refresh() {
     try {
       const history = JSON.parse(localStorage.getItem(KEY) || '[]');
+      // Buscar ESTRICTAMENTE el favorito
       const favorite = history.find(i => i.favorite);
-      const target = favorite || history[0]; // favorito o último generado
 
-      if (target && target.base64) {
-        imgEl.src = target.base64;
+      if (favorite && favorite.base64) {
+        imgEl.src = favorite.base64;
         imgEl.style.display = 'block';
         phEl.style.display = 'none';
       } else {
@@ -83,7 +84,7 @@
   window.addEventListener('storage', (e) => { if (e.key === KEY) refresh(); });
 
   refresh();
-  setInterval(refresh, 3000); // fallback por si el evento storage no dispara en el iframe
+  setInterval(refresh, 3000);
 
   if (window.lucide) lucide.createIcons();
   else setTimeout(() => window.lucide && lucide.createIcons(), 300);
