@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.15);
+    --text: #0b1220;
+    --muted: #64748b;
+    --line: rgba(15, 23, 42, 0.08);
+    --card: #ffffff;
+    --field: #f6f8fb;
+    --danger: #ef4444;
+    --success: #16a34a;
+    --warning: #ca8a04;
+  }
+  html[data-modo="oscuro"] {
+    --text: #f4f4f6;
+    --muted: #9ea1aa;
+    --line: rgba(255, 255, 255, 0.09);
+    --card: #222227;
+    --field: #2a2a31;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100vh; width: 100%; margin: 0; overflow: hidden; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: 'Segoe UI Variable', system-ui, sans-serif;
+    background: var(--field); color: var(--text);
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+
+  /* Header Compacto con Tabs a la Derecha */
+  .header {
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .header-title { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .header-title svg { width: 18px; height: 18px; color: var(--accent); }
+  
+  .header-tabs {
+    display: flex; gap: 4px; background: var(--field); padding: 2px; border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .tab {
+    background: transparent; border: none; color: var(--muted);
+    padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 11px;
+    cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  .tab svg { width: 12px; height: 12px; }
+
+  /* Zona de Búsqueda */
+  .search-area {
+    padding: 12px 16px 8px; background: var(--field); flex-shrink: 0;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .search-box {
+    display: flex; gap: 8px; background: var(--card); padding: 6px;
+    border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  }
+  .search-box input {
+    flex: 1; padding: 8px 12px; border-radius: 6px; border: none;
+    background: transparent; color: var(--text); font: inherit; font-size: 14px; outline: none;
+  }
+  .btn-search {
+    background: var(--accent); color: #fff; border: none; padding: 0 14px;
+    border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .btn-search:hover { filter: brightness(1.1); }
+
+  /* Sugerencias con Scrollbar Fina */
+  .suggestions-scroll {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .suggestions-scroll::-webkit-scrollbar { height: 4px; }
+  .suggestions-scroll::-webkit-scrollbar-track { background: transparent; }
+  .suggestions-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .suggestions-scroll::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .suggestion-chip {
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+    padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: 0.2s; white-space: nowrap; flex-shrink: 0;
+  }
+  .suggestion-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Área de Contenido */
+  .content {
+    flex: 1; overflow-y: auto; background: var(--field);
+    display: none; flex-direction: column;
+  }
+  .content.active { display: flex; }
+
+  /* Tarjeta del Artículo */
+  .article-wrapper {
+    background: var(--card); margin: 16px; border-radius: 16px;
+    border: 1px solid var(--line); overflow: hidden;
+    display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .article-hero {
+    position: relative; width: 100%; height: 180px; background: var(--field);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .article-hero img { width: 100%; height: 100%; object-fit: cover; }
+  .article-hero.no-image {
+    background: linear-gradient(135deg, var(--accent-soft), var(--field));
+    color: var(--accent);
+  }
+  .article-hero.no-image svg { width: 48px; height: 48px; opacity: 0.5; }
+  
+  .article-hero-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, var(--card) 0%, transparent 60%);
+  }
+
+  .article-body { padding: 0 20px 20px; margin-top: -30px; position: relative; z-index: 2; }
+  
+  .article-header-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 12px; }
+  
+  /* Título Clickeable */
+  .article-title { 
+    font-size: 22px; font-weight: 900; margin: 0; line-height: 1.2; 
+    color: var(--text); text-shadow: 0 2px 10px var(--card); 
+    text-decoration: none; display: inline-block;
+  }
+  .article-title:hover { color: var(--accent); text-decoration: underline; }
+  
+  .article-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .btn-icon {
+    background: var(--field); border: 1px solid var(--line); color: var(--muted); cursor: pointer;
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    transition: 0.2s; backdrop-filter: blur(4px);
+  }
+  .btn-icon:hover { background: var(--accent); color: #fff; border-color: var(--accent); transform: scale(1.05); }
+  .btn-icon.saved { color: var(--warning); border-color: var(--warning); }
+  .btn-icon.saved:hover { background: var(--warning); color: #fff; }
+  .btn-icon svg { width: 18px; height: 18px; }
+
+  .article-text { font-size: 14.5px; line-height: 1.7; color: var(--text); white-space: pre-wrap; opacity: 0.9; }
+
+  /* Favoritos */
+  .fav-list { display: flex; flex-direction: column; gap: 8px; padding: 16px; }
+  .fav-item {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; display: flex; align-items: center; gap: 12px; cursor: pointer;
+    transition: 0.2s;
+  }
+  .fav-item:hover { border-color: var(--accent); transform: translateX(4px); }
+  .fav-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .fav-title { font-weight: 700; font-size: 14px; flex: 1; }
+
+  /* Estados Vacíos */
+  .empty-state {
+    text-align: center; color: var(--muted); font-size: 13px; padding: 40px 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; gap: 12px; opacity: 0.7;
+  }
+  .empty-state svg { width: 48px; height: 48px; opacity: 0.5; }
+
+  /* Footer Créditos (Actualizado a 4.0) */
+  .app-credit {
+    text-align: center; font-size: 10px; color: var(--muted);
+    padding: 6px; border-top: 1px solid var(--line);
+    background: var(--card); flex-shrink: 0;
+  }
+  .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  .app-credit a:hover { text-decoration: underline; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: var(--card); padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(.22,1,.36,1); pointer-events: none; z-index: 1000;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Wik-He
+    </div>
+    <div class="header-tabs">
+      <button class="tab active" id="tab-search"><i data-lucide="search"></i> Buscar</button>
+      <button class="tab" id="tab-favs"><i data-lucide="bookmark"></i> Favoritos</button>
+    </div>
+  </div>
+
+  <div class="content active" id="view-search" style="overflow-y: hidden;">
+    
+    <div class="search-area">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Buscar en Wikipedia...">
+        <button class="btn-search" id="btn-search"><i data-lucide="search"></i></button>
+      </div>
+      <div class="suggestions-scroll" id="suggestions-container"></div>
+    </div>
+
+    <div style="flex: 1; overflow-y: auto;" id="article-scroll-area">
+      <div class="empty-state" id="search-empty">
+        <i data-lucide="book-open"></i>
+        <p>Explora el conocimiento libre.<br>Busca cualquier tema para empezar.</p>
+      </div>
+      <div class="article-wrapper" id="article-container" style="display: none;"></div>
+    </div>
+  </div>
+
+  <div class="content" id="view-favs">
+    <div class="fav-list" id="favs-list">
+      <div class="empty-state">
+        <i data-lucide="bookmark"></i>
+        <p>No tienes artículos guardados aún.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER ACTUALIZADO A CC BY-SA 4.0 -->
+  <div class="app-credit">
+    Contenido de <a href="https://www.wikipedia.org/" target="_blank">Wikipedia</a> bajo licencia <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+  // 1. Sincronización de Tema
+  if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'myhub:tema:res') {
+      document.documentElement.dataset.modo = e.data.modo;
+      document.documentElement.style.setProperty('--accent', e.data.color);
+      document.documentElement.style.setProperty('--accent-soft', e.data.color + '26');
+    }
+  });
+
+  // 2. Configuración y Estado
+  const SEARCH_API = 'https://es.wikipedia.org/w/api.php';
+  const REST_API = 'https://es.wikipedia.org/api/rest_v1/page/summary/';
+  
+  // Cabecera requerida por las políticas de Wikimedia para apps
+  const API_HEADERS = {
+    'Api-User-Agent': 'Wik-He/1.0 (https://github.com/VicHe-studios/MyHubHestudio; viche@myhub.com)'
+  };
+  
+  let favorites = JSON.parse(localStorage.getItem('wik_he_favs') || '[]');
+  let toastTimeout;
+
+  // 3. Referencias DOM
+  const searchInput = document.getElementById('search-input');
+  const btnSearch = document.getElementById('btn-search');
+  const suggestionsContainer = document.getElementById('suggestions-container');
+  const searchEmpty = document.getElementById('search-empty');
+  const articleContainer = document.getElementById('article-container');
+  const articleScrollArea = document.getElementById('article-scroll-area');
+  const favsList = document.getElementById('favs-list');
+  const toastEl = document.getElementById('toast');
+  
+  const tabSearch = document.getElementById('tab-search');
+  const tabFavs = document.getElementById('tab-favs');
+  const viewSearch = document.getElementById('view-search');
+  const viewFavs = document.getElementById('view-favs');
+
+  // 4. Utilidades
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 2500);
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // 5. Búsqueda y Sugerencias
+  async function searchWikipedia(query) {
+    if (!query.trim()) return;
+    
+    searchEmpty.innerHTML = '<p>Buscando...</p>';
+    searchEmpty.style.display = 'flex';
+    articleContainer.style.display = 'none';
+    suggestionsContainer.innerHTML = '';
+
+    const searchUrl = `${SEARCH_API}?action=opensearch&search=${encodeURIComponent(query)}&limit=10&namespace=0&format=json&origin=*`;
+    
+    try {
+      // Aplicamos la cabecera aquí
+      const res = await fetch(searchUrl, { headers: API_HEADERS });
+      const data = await res.json();
+      const titles = data[1];
+
+      if (titles.length === 0) {
+        searchEmpty.innerHTML = '<i data-lucide="search-x"></i><p>No se encontraron resultados.</p>';
+        lucide.createIcons();
+        return;
+      }
+
+      suggestionsContainer.innerHTML = '';
+      titles.forEach(title => {
+        const chip = document.createElement('div');
+        chip.className = 'suggestion-chip';
+        chip.textContent = title;
+        chip.onclick = () => fetchArticleSummary(title);
+        suggestionsContainer.appendChild(chip);
+      });
+
+      await fetchArticleSummary(titles[0]);
+
+    } catch (err) {
+      console.error(err);
+      searchEmpty.innerHTML = '<p style="color: var(--danger);">Error de conexión.</p>';
+    }
+  }
+
+  // 6. Obtener Resumen y Renderizar
+  async function fetchArticleSummary(title) {
+    searchEmpty.innerHTML = '<p>Cargando artículo...</p>';
+    articleContainer.style.display = 'none';
+
+    try {
+      // Aplicamos la cabecera aquí también
+      const res = await fetch(REST_API + encodeURIComponent(title), { headers: API_HEADERS });
+      if (!res.ok) throw new Error('Artículo no encontrado');
+      
+      const data = await res.json();
+      if (!data.extract) throw new Error('No hay resumen');
+
+      renderArticle(data);
+      articleScrollArea.scrollTop = 0;
+
+    } catch (err) {
+      console.error(err);
+      searchEmpty.innerHTML = `<i data-lucide="alert-circle"></i><p>No se pudo cargar "${escapeHtml(title)}".</p>`;
+      searchEmpty.style.display = 'flex';
+      lucide.createIcons();
+    }
+  }
+
+  function renderArticle(data) {
+    const title = data.title;
+    const extract = data.extract;
+    const imageUrl = data.thumbnail?.source;
+    const fullUrl = data.content_urls?.desktop?.page;
+    const isFav = favorites.some(f => f.title === title);
+    
+    const heroHtml = imageUrl 
+      ? `<div class="article-hero"><img src="${imageUrl}" alt="${escapeHtml(title)}"><div class="article-hero-overlay"></div></div>`
+      : `<div class="article-hero no-image"><i data-lucide="book-open"></i><div class="article-hero-overlay"></div></div>`;
+
+    articleContainer.innerHTML = `
+      ${heroHtml}
+      <div class="article-body">
+        <div class="article-header-row">
+          <!-- Título clickeable a Wikipedia -->
+          <a href="${fullUrl}" target="_blank" class="article-title" title="Leer en Wikipedia">${escapeHtml(title)}</a>
+          <div class="article-actions">
+            <button class="btn-icon fav-btn ${isFav ? 'saved' : ''}" title="${isFav ? 'Quitar' : 'Guardar'}">
+              <i data-lucide="${isFav ? 'bookmark-check' : 'bookmark'}"></i>
+            </button>
+            <a class="btn-icon" href="${fullUrl}" target="_blank" title="Abrir enlace externo">
+              <i data-lucide="external-link"></i>
+            </a>
+          </div>
+        </div>
+        <div class="article-text">${escapeHtml(extract)}</div>
+      </div>
+    `;
+
+    articleContainer.querySelector('.fav-btn').onclick = () => toggleFavorite({ title, extract, imageUrl, fullUrl });
+    
+    searchEmpty.style.display = 'none';
+    articleContainer.style.display = 'flex';
+    lucide.createIcons();
+  }
+
+  // 7. Sistema de Favoritos
+  function toggleFavorite(article) {
+    const index = favorites.findIndex(f => f.title === article.title);
+    
+    if (index > -1) {
+      favorites.splice(index, 1);
+      showToast('Eliminado de Favoritos');
+    } else {
+      favorites.push(article);
+      showToast('¡Guardado en Favoritos!');
+    }
+    
+    localStorage.setItem('wik_he_favs', JSON.stringify(favorites));
+    
+    if (viewSearch.classList.contains('active')) {
+      const btn = articleContainer.querySelector('.fav-btn');
+      if (btn) {
+        const isFav = favorites.some(f => f.title === article.title);
+        btn.classList.toggle('saved', isFav);
+        btn.innerHTML = `<i data-lucide="${isFav ? 'bookmark-check' : 'bookmark'}"></i>`;
+        lucide.createIcons();
+      }
+    } else {
+      renderFavorites();
+    }
+  }
+
+  // 8. Renderizar Lista de Favoritos
+  function renderFavorites() {
+    if (favorites.length === 0) {
+      favsList.innerHTML = '<div class="empty-state"><i data-lucide="bookmark"></i><p>No tienes artículos guardados aún.</p></div>';
+      lucide.createIcons();
+      return;
+    }
+    favsList.innerHTML = '';
+    favorites.forEach(article => {
+      const item = document.createElement('div');
+      item.className = 'fav-item';
+      item.innerHTML = `
+        <div class="fav-icon"><i data-lucide="file-text"></i></div>
+        <div class="fav-title">${escapeHtml(article.title)}</div>
+        <i data-lucide="chevron-right" style="color: var(--muted); width: 18px; height: 18px;"></i>
+      `;
+      item.onclick = () => {
+        tabSearch.click();
+        searchInput.value = article.title;
+        renderArticle(article);
+        articleScrollArea.scrollTop = 0;
+      };
+      favsList.appendChild(item);
+    });
+    lucide.createIcons();
+  }
+
+  // 9. Eventos de UI
+  btnSearch.onclick = () => searchWikipedia(searchInput.value);
+  searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') btnSearch.click(); });
+
+  tabSearch.onclick = () => {
+    tabSearch.classList.add('active');
+    tabFavs.classList.remove('active');
+    viewSearch.classList.add('active');
+    viewFavs.classList.remove('active');
+  };
+
+  tabFavs.onclick = () => {
+    tabFavs.classList.add('active');
+    tabSearch.classList.remove('active');
+    viewFavs.classList.add('active');
+    viewSearch.classList.remove('active');
+    renderFavorites();
+  };
+
+  // 10. Inicialización
+  lucide.createIcons();
+</script>
+</body>
+</html>
