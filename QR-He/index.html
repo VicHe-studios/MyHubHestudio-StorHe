@@ -23,34 +23,32 @@
   }
   * { box-sizing: border-box; }
 
-  /* Scrollbar Estilizada */
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-  
+
   body {
     margin: 0; min-height: 100vh; display: flex; flex-direction: column;
     font-family: 'Segoe UI Variable', system-ui, sans-serif;
-    background: var(--card); color: var(--text); 
-    overflow-y: auto; 
+    background: var(--card); color: var(--text);
+    overflow-y: auto;
     padding: 24px 20px;
     align-items: center;
   }
 
   .container {
-    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 16px;
-    margin: auto; 
+    width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 14px;
+    margin: auto;
   }
 
   .header {
-    text-align: center; margin-bottom: 8px;
+    text-align: center; margin-bottom: 4px;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
   }
   .header h1 { margin: 0; font-size: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
   .header h1 svg { width: 20px; height: 20px; color: var(--accent); }
 
-  /* Badge de almacenamiento (igual que Galeria-He / Silly cupboard) */
   .storage-info {
     display: inline-flex; align-items: center;
     font-size: 10px; font-weight: 600;
@@ -60,10 +58,7 @@
     border: 1px solid var(--line);
     white-space: nowrap;
   }
-  .storage-info.warn {
-    color: var(--danger);
-    border-color: rgba(239, 68, 68, 0.3);
-  }
+  .storage-info.warn { color: var(--danger); border-color: rgba(239, 68, 68, 0.3); }
 
   textarea {
     width: 100%; height: 80px; resize: none; padding: 12px;
@@ -87,15 +82,69 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.1); min-height: 180px;
     border: 1px solid var(--line);
   }
-  .qr-container.empty { 
-    background: var(--field); border-style: dashed; color: var(--muted); font-size: 13px; 
+  .qr-container.empty {
+    background: var(--field); border-style: dashed; color: var(--muted); font-size: 13px;
     box-shadow: none;
   }
-  
-  .qr-container img, .qr-container canvas { display: block; border-radius: 8px; }
-  
+  .qr-container img, .qr-container canvas { display: block; border-radius: 8px; max-width: 100%; }
+
+  /* Historial */
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted); margin-top: 8px;
+  }
+  .history-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 8px;
+  }
+  .qr-card {
+    position: relative;
+    background: var(--field);
+    border: 1.5px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .qr-card:hover { transform: translateY(-1px); }
+  .qr-card.favorite { border-color: var(--accent); }
+  .qr-card > img {
+    width: 100%; aspect-ratio: 1; object-fit: contain;
+    display: block; background: #fff; padding: 4px;
+  }
+  .qr-card-text {
+    font-size: 10px; padding: 5px 6px; color: var(--muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-top: 1px solid var(--line);
+  }
+  .qr-card-actions {
+    position: absolute; top: 4px; right: 4px;
+    display: flex; gap: 3px;
+  }
+  .qr-action {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.55); color: #fff;
+    transition: 0.15s;
+  }
+  .qr-action:hover { background: rgba(0,0,0,0.8); }
+  .qr-action svg { width: 12px; height: 12px; }
+  .qr-action.fav.on { background: #f59e0b; }
+  .qr-action.del { background: rgba(239, 68, 68, 0.9); }
+
+  .history-empty {
+    text-align: center; font-size: 12px; color: var(--muted);
+    padding: 20px 12px;
+    border: 1px dashed var(--line); border-radius: 10px;
+    display: none;
+  }
+  .history-empty.visible { display: block; }
+
   .app-credit {
-    text-align: center; font-size: 11px; color: var(--muted); margin-top: 4px; margin-bottom: 16px;
+    text-align: center; font-size: 11px; color: var(--muted);
+    margin-top: 4px; margin-bottom: 16px;
   }
   .app-credit a { color: var(--accent); text-decoration: none; font-weight: 600; }
   .app-credit a:hover { text-decoration: underline; }
@@ -123,24 +172,27 @@
       <h1><i data-lucide="qr-code"></i> Generador QR</h1>
       <div class="storage-info" id="storage-info">0.00 MB usados (máx 5 MB)</div>
     </div>
-    
+
     <textarea id="input-text" placeholder="Escribe un texto o pega un enlace aquí..."></textarea>
     <button class="btn" id="btn-generate"><i data-lucide="sparkles"></i> Generar Código</button>
-    
+
     <div class="qr-container empty" id="qr-box">
       <span id="qr-placeholder">El código QR aparecerá aquí</span>
     </div>
-    
+
     <button class="btn" id="btn-download" style="display:none; background: var(--field); color: var(--text); border: 1px solid var(--line);">
       <i data-lucide="download"></i> Descargar Imagen
     </button>
+
+    <div class="section-title">Historial</div>
+    <div class="history-grid" id="history-grid"></div>
+    <div class="history-empty" id="history-empty">Aún no has generado ningún QR</div>
 
     <div class="app-credit">
       Generado con <a href="https://github.com/davidshimjs/qrcodejs" target="_blank">QRCode.js</a>
     </div>
   </div>
 
-  <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -153,7 +205,6 @@
       }
     });
 
-    // --- SISTEMA DE TOAST ---
     let toastTimer = null;
     function showToast(msg, type = '') {
       const el = document.getElementById('toast');
@@ -164,63 +215,35 @@
     }
 
     /* ============================================================
-       MÉTODO DE GUARDADO (igual al de Galeria-He)
-       - base64 en localStorage
-       - tamaño = base64.length * 0.75  ← Galeria-He
-       - try/catch con fallback si la cuota se llena ← Galeria-He
-       - pre-check MAX_STORAGE antes de escribir ← Silly cupboard
-       - badge con MB usados ← ambas
+       ALMACENAMIENTO (método Galeria-He + pre-check Silly cupboard)
+       Historial: array de { id, text, base64, date, favorite }
        ============================================================ */
-    const STORAGE_KEY = 'qr-he:last';           // misma llave que lee el widget 1x1
-    const MAX_STORAGE = 5 * 1024 * 1024;        // 5 MB
+    const STORAGE_KEY = 'qr-he:history';
+    const MAX_STORAGE = 5 * 1024 * 1024;
 
-    function calcSizeBytes(base64) {
-      // Galeria-He: base64.length * 0.75
-      return base64 ? base64.length * 0.75 : 0;
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+      catch { return []; }
     }
-
-    function formatMB(bytes) {
-      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    function saveHistory(history) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        return true;
+      } catch {
+        showToast('Límite de almacenamiento alcanzado.', 'error');
+        return false;
+      }
     }
-
+    function calcTotalSize(history) {
+      return history.reduce((acc, i) => acc + (i.base64 ? i.base64.length * 0.75 : 0), 0);
+    }
     function updateStorageBadge() {
       const badge = document.getElementById('storage-info');
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) {
-          badge.textContent = '0.00 MB usados (máx 5 MB)';
-          badge.classList.remove('warn');
-          return;
-        }
-        const item = JSON.parse(raw);
-        const bytes = calcSizeBytes(item.base64);
-        badge.textContent = `${formatMB(bytes)} usados (máx 5 MB)`;
+        const bytes = calcTotalSize(loadHistory());
+        badge.textContent = `${(bytes / (1024*1024)).toFixed(2)} MB usados (máx 5 MB)`;
         badge.classList.toggle('warn', bytes > MAX_STORAGE * 0.9);
-      } catch {
-        badge.textContent = '—';
-      }
-    }
-
-    function saveQR(text, base64) {
-      const sizeBytes = calcSizeBytes(base64);
-
-      // Pre-check (estilo Silly cupboard)
-      if (sizeBytes > MAX_STORAGE) {
-        showToast('El QR supera el límite de 5 MB', 'error');
-        return;
-      }
-
-      const item = { id: Date.now(), text, base64, date: Date.now() };
-
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(item));
-      } catch (e) {
-        // Fallback (estilo Galeria-He): cuota llena → limpia y avisa
-        showToast('Límite de almacenamiento alcanzado.', 'error');
-        try { localStorage.removeItem(STORAGE_KEY); } catch {}
-      }
-
-      updateStorageBadge();
+      } catch { badge.textContent = '—'; }
     }
     /* ============================================================ */
 
@@ -228,56 +251,151 @@
     const btnGenerate = document.getElementById('btn-generate');
     const btnDownload = document.getElementById('btn-download');
     const qrBox = document.getElementById('qr-box');
+    const historyGrid = document.getElementById('history-grid');
+    const historyEmpty = document.getElementById('history-empty');
 
-    let qrCodeInstance = null;
+    /* ---- Vista previa ---- */
+    function showPreview(base64) {
+      qrBox.classList.remove('empty');
+      qrBox.innerHTML = '';
+      const im = document.createElement('img');
+      im.src = base64;
+      im.alt = 'QR';
+      im.style.maxWidth = '100%';
+      im.style.maxHeight = '160px';
+      qrBox.appendChild(im);
+      btnDownload.style.display = 'flex';
+    }
 
+    /* ---- Generar ---- */
     btnGenerate.onclick = () => {
       const text = inputText.value.trim();
-      
-      // REEMPLAZO DE ALERT
-      if (!text) {
-        showToast('Por favor, escribe algo para generar el código.', 'error');
-        return;
-      }
+      if (!text) { showToast('Por favor, escribe algo para generar el código.', 'error'); return; }
 
-      qrBox.innerHTML = '';
-      qrBox.classList.remove('empty');
-
-      qrCodeInstance = new QRCode(qrBox, {
-        text: text,
-        width: 160,
-        height: 160,
+      // Generar en un contenedor temporal para obtener el canvas
+      const tmp = document.createElement('div');
+      new QRCode(tmp, {
+        text,
+        width: 256,
+        height: 256,
         colorDark : "#000000",
         colorLight : "#ffffff",
         correctLevel : QRCode.CorrectLevel.M
       });
 
-      btnDownload.style.display = 'flex';
+      const canvas = tmp.querySelector('canvas');
+      if (!canvas) { showToast('Error generando QR', 'error'); return; }
+      const base64 = canvas.toDataURL('image/png');
 
-      // Guardar con el método de Galeria-He
-      const c = qrBox.querySelector('canvas');
-      if (c) {
-        const base64 = c.toDataURL('image/png');
-        saveQR(text, base64);
-      }
+      // Guardar en historial
+      const history = loadHistory();
+      const newTotal = calcTotalSize(history) + base64.length * 0.75;
+      if (newTotal > MAX_STORAGE) { showToast('Supera el límite de 5 MB', 'error'); return; }
+
+      history.unshift({ id: Date.now(), text, base64, date: Date.now(), favorite: false });
+      if (!saveHistory(history)) return;
+
+      // Preview
+      showPreview(base64);
+
+      // Re-render
+      renderHistory();
+      updateStorageBadge();
     };
 
+    /* ---- Descargar ---- */
     btnDownload.onclick = () => {
-      const canvas = qrBox.querySelector('canvas');
       const img = qrBox.querySelector('img');
+      if (!img) return;
       const a = document.createElement('a');
       a.download = 'CodigoQR.png';
-
-      if (canvas) a.href = canvas.toDataURL("image/png");
-      else if (img) a.href = img.src;
-      else return;
-      
+      a.href = img.src;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       showToast('Imagen descargada');
     };
 
+    /* ---- Historial ---- */
+    const STAR_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+    const STAR_FILLED_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+    const TRASH_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>';
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function toggleFavorite(id) {
+      const history = loadHistory();
+      const wasFav = history.find(i => i.id === id)?.favorite;
+      history.forEach(i => { i.favorite = false; });
+      if (!wasFav) {
+        const item = history.find(i => i.id === id);
+        if (item) item.favorite = true;
+      }
+      saveHistory(history);
+      renderHistory();
+    }
+
+    function deleteQR(id) {
+      const history = loadHistory().filter(i => i.id !== id);
+      saveHistory(history);
+      renderHistory();
+      updateStorageBadge();
+    }
+
+    function renderHistory() {
+      const history = loadHistory();
+      historyGrid.innerHTML = '';
+
+      if (history.length === 0) {
+        historyEmpty.classList.add('visible');
+        return;
+      }
+      historyEmpty.classList.remove('visible');
+
+      history.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'qr-card' + (item.favorite ? ' favorite' : '');
+
+        const img = document.createElement('img');
+        img.src = item.base64;
+        img.alt = item.text;
+        card.appendChild(img);
+
+        const txt = document.createElement('div');
+        txt.className = 'qr-card-text';
+        txt.textContent = item.text;
+        txt.title = item.text;
+        card.appendChild(txt);
+
+        const actions = document.createElement('div');
+        actions.className = 'qr-card-actions';
+
+        const favBtn = document.createElement('button');
+        favBtn.className = 'qr-action fav' + (item.favorite ? ' on' : '');
+        favBtn.title = item.favorite ? 'Quitar favorito' : 'Marcar favorito';
+        favBtn.innerHTML = item.favorite ? STAR_FILLED_SVG : STAR_SVG;
+        favBtn.onclick = (e) => { e.stopPropagation(); toggleFavorite(item.id); };
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'qr-action del';
+        delBtn.title = 'Eliminar';
+        delBtn.innerHTML = TRASH_SVG;
+        delBtn.onclick = (e) => { e.stopPropagation(); deleteQR(item.id); };
+
+        actions.appendChild(favBtn);
+        actions.appendChild(delBtn);
+        card.appendChild(actions);
+
+        card.onclick = () => showPreview(item.base64);
+
+        historyGrid.appendChild(card);
+      });
+    }
+
+    /* ---- Init ---- */
+    renderHistory();
     updateStorageBadge();
     if (window.lucide) lucide.createIcons();
   </script>
