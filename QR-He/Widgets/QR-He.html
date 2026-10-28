@@ -1,58 +1,38 @@
-<div class="qw" id="qw" title="Abrir QR-He" role="button" tabindex="0">
-  <div class="qw-icon">
+<div class="qw" id="qw" role="button" tabindex="0" title="Abrir QR-He">
+  <img id="qw-img" alt="QR" style="display:none;">
+  <div class="qw-placeholder" id="qw-placeholder">
     <i data-lucide="qr-code"></i>
-    <span class="qw-dot" id="qw-dot"></span>
   </div>
-  <span class="qw-label">QR-He</span>
 </div>
 
 <style>
-  body { margin: 0; }
+  html, body { margin: 0; height: 100%; width: 100%; }
   * { box-sizing: border-box; }
-
   .qw {
     width: 100%; height: 100%;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 6px; cursor: pointer;
-    color: var(--text, #0b1220);
-    font-family: 'Segoe UI Variable', system-ui, sans-serif;
-    user-select: none;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; user-select: none;
+    padding: 4px;
     transition: transform .15s ease;
   }
-  .qw:active { transform: scale(0.94); }
-
-  .qw-icon {
-    position: relative;
-    width: 38px; height: 38px;
+  .qw:active { transform: scale(0.96); }
+  .qw img {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+    display: block;
+  }
+  .qw-placeholder {
     display: flex; align-items: center; justify-content: center;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--accent, #2563eb) 15%, transparent);
-  }
-  .qw-icon svg {
-    width: 22px; height: 22px;
-    color: var(--accent, #2563eb);
-  }
-
-  /* Puntito indicador: hay un QR guardado */
-  .qw-dot {
-    position: absolute; top: -2px; right: -2px;
-    width: 10px; height: 10px; border-radius: 50%;
-    background: #22c55e;
-    border: 2px solid var(--card, #fff);
-    display: none;
-  }
-  .qw-dot.on { display: block; }
-
-  .qw-label {
-    font-size: 10px; font-weight: 700;
-    letter-spacing: .3px; text-transform: uppercase;
+    width: 100%; height: 100%;
     color: var(--muted, #64748b);
   }
+  .qw-placeholder svg { width: 55%; height: 55%; opacity: 0.4; }
 </style>
 
 <script>
-  // Tema heredado del sistema
   if (window.parent !== window) window.parent.postMessage({ type: 'myhub:get-tema' }, '*');
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'myhub:tema:res') {
@@ -61,18 +41,31 @@
     }
   });
 
-  // Lee si hay un QR guardado (por si algún día la app lo escribe).
-  // Si no existe, el widget funciona igual: solo abre la app.
-  const KEY = 'qr-he:last';
-  function refreshDot() {
-    const dot = document.getElementById('qw-dot');
+  const KEY = 'qr-he:history';
+  const imgEl = document.getElementById('qw-img');
+  const phEl  = document.getElementById('qw-placeholder');
+
+  function refresh() {
     try {
-      const raw = localStorage.getItem(KEY);
-      dot.classList.toggle('on', !!raw);
-    } catch { dot.classList.remove('on'); }
+      const history = JSON.parse(localStorage.getItem(KEY) || '[]');
+      const favorite = history.find(i => i.favorite);
+      const target = favorite || history[0]; // favorito o último generado
+
+      if (target && target.base64) {
+        imgEl.src = target.base64;
+        imgEl.style.display = 'block';
+        phEl.style.display = 'none';
+      } else {
+        imgEl.style.display = 'none';
+        imgEl.removeAttribute('src');
+        phEl.style.display = 'flex';
+      }
+    } catch {
+      imgEl.style.display = 'none';
+      phEl.style.display = 'flex';
+    }
   }
 
-  // Abrir la app en el hub
   function openApp() {
     if (window.parent !== window) {
       window.parent.postMessage({ type: 'myhub:open', id: 'qr-he' }, '*');
@@ -87,11 +80,11 @@
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openApp(); }
   });
 
-  window.addEventListener('storage', (e) => {
-    if (e.key === KEY) refreshDot();
-  });
+  window.addEventListener('storage', (e) => { if (e.key === KEY) refresh(); });
 
-  refreshDot();
+  refresh();
+  setInterval(refresh, 3000); // fallback por si el evento storage no dispara en el iframe
+
   if (window.lucide) lucide.createIcons();
   else setTimeout(() => window.lucide && lucide.createIcons(), 300);
 </script>
